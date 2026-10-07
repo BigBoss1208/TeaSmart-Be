@@ -12,6 +12,25 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(CategoryConflictException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryConflict(CategoryConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CATEGORY_CONFLICT", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidCategoryNameException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCategoryName(InvalidCategoryNameException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_REQUEST", exception.getMessage()));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMethod(
+            org.springframework.web.HttpRequestMethodNotSupportedException exception) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ErrorResponse("METHOD_NOT_ALLOWED", "HTTP method not supported."));
+    }
+
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(
             org.springframework.security.core.AuthenticationException exception) {
