@@ -27,20 +27,30 @@
 @REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
 @REM ----------------------------------------------------------------------------
 
+@SETLOCAL
 @IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
 @SET __MVNW_CMD__=
+@SET __MVNW_DRIVE__=
 @SET __MVNW_ERROR__=
 @SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
 @SET PSModulePath=
 @FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
   IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
+  IF "%%A"=="MVN_RUN_DRIVE" (set __MVNW_DRIVE__=%%B)
 )
 @SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
 @SET __MVNW_PSMODULEP_SAVE=
 @SET __MVNW_ARG0_NAME__=
 @SET MVNW_USERNAME=
 @SET MVNW_PASSWORD=
-@IF NOT "%__MVNW_CMD__%"=="" ("%__MVNW_CMD__%" %*)
+@IF "%__MVNW_CMD__%"=="" GOTO wrapper_failed
+@IF NOT "%__MVNW_DRIVE__%"=="" PUSHD "%__MVNW_DRIVE__%\"
+@CALL "%__MVNW_CMD__%" %*
+@SET __MVNW_EXIT__=%ERRORLEVEL%
+@IF NOT "%__MVNW_DRIVE__%"=="" POPD
+@IF NOT "%__MVNW_DRIVE__%"=="" SUBST "%__MVNW_DRIVE__%" /D
+@EXIT /B %__MVNW_EXIT__%
+:wrapper_failed
 @echo Cannot start maven from wrapper >&2 && exit /b 1
 @GOTO :EOF
 : end batch / begin powershell #>
@@ -51,6 +61,32 @@ if ($env:MVNW_VERBOSE -eq "true") {
 }
 
 # calculate distributionUrl, requires .mvn/wrapper/maven-wrapper.properties
+function Write-MavenCommand([string] $command) {
+  # Java 17's Windows launcher/argfile uses the native code page. Map the
+  # current directory only when that encoding cannot preserve its full path.
+  # No files are moved; the batch portion removes our mapping after Maven exits.
+  $runDirectory = (Get-Location).ProviderPath
+  $nativeEncoding = [System.Text.Encoding]::Default
+  if ($nativeEncoding.GetString($nativeEncoding.GetBytes($runDirectory)) -cne $runDirectory) {
+    $runDrive = $null
+    foreach ($letter in [char[]] 'ZYXWVUTSRQPONMLKJIHGFED') {
+      $candidate = "${letter}:"
+      if (-not (Test-Path "${candidate}\")) {
+        & "$env:SystemRoot/System32/subst.exe" $candidate $runDirectory | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          $runDrive = $candidate
+          break
+        }
+      }
+    }
+    if (-not $runDrive) {
+      throw 'Cannot map a temporary drive for the Unicode project path.'
+    }
+    Write-Output "MVN_RUN_DRIVE=$runDrive"
+  }
+  Write-Output "MVN_CMD=$command"
+}
+
 $distributionUrl = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionUrl
 if (!$distributionUrl) {
   Write-Error "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
@@ -101,7 +137,7 @@ $MAVEN_HOME = "$MAVEN_HOME_PARENT/$MAVEN_HOME_NAME"
 
 if (Test-Path -Path "$MAVEN_HOME" -PathType Container) {
   Write-Verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
+  Write-MavenCommand "$MAVEN_HOME/bin/$MVN_CMD"
   exit $?
 }
 
@@ -186,4 +222,4 @@ try {
   catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
 }
 
-Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
+Write-MavenCommand "$MAVEN_HOME/bin/$MVN_CMD"
