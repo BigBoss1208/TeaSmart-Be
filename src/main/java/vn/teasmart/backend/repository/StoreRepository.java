@@ -1,7 +1,9 @@
 package vn.teasmart.backend.repository;
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import vn.teasmart.backend.entity.Store;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
+    List<Store> findByStatusOrderByNameAsc(String status);
 }

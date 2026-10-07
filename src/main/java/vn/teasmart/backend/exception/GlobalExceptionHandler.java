@@ -5,9 +5,40 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(
+            org.springframework.security.core.AuthenticationException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("UNAUTHORIZED", "Authentication required or invalid credentials."));
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEmail(DuplicateEmailException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("DUPLICATE_EMAIL", "Email already registered."));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
+        List<FieldErrorResponse> errors = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> new FieldErrorResponse(error.getField(), error.getDefaultMessage()))
+                .toList();
+        return ResponseEntity.badRequest()
+                .body(new ValidationErrorResponse("VALIDATION_ERROR", "Invalid request fields.", errors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_REQUEST", "Malformed JSON or unsupported request fields."));
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException exception) {
@@ -34,5 +65,11 @@ public class GlobalExceptionHandler {
     }
 
     public record ErrorResponse(String code, String message) {
+    }
+
+    public record FieldErrorResponse(String field, String message) {
+    }
+
+    public record ValidationErrorResponse(String code, String message, List<FieldErrorResponse> errors) {
     }
 }
