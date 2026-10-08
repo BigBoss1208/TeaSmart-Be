@@ -12,6 +12,12 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(TeaRegionConflictException.class)
+    public ResponseEntity<ErrorResponse> handleTeaRegionConflict(TeaRegionConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("TEA_REGION_CONFLICT", exception.getMessage()));
+    }
+
     @ExceptionHandler(CategoryConflictException.class)
     public ResponseEntity<ErrorResponse> handleCategoryConflict(CategoryConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
