@@ -12,6 +12,18 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ProductConflictException.class)
+    public ResponseEntity<ErrorResponse> handleProductConflict(ProductConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("PRODUCT_CONFLICT", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidProductNameException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidProductName(InvalidProductNameException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_REQUEST", exception.getMessage()));
+    }
+
     @ExceptionHandler(TeaRegionConflictException.class)
     public ResponseEntity<ErrorResponse> handleTeaRegionConflict(TeaRegionConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

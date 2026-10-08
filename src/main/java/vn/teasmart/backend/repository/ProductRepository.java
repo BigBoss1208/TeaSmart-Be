@@ -8,6 +8,10 @@ import vn.teasmart.backend.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    boolean existsBySlug(String slug);
+
+    Page<Product> findByNameContainingIgnoreCase(String keyword, Pageable pageable);
+
     Optional<Product> findBySlug(String slug);
 
     Page<Product> findByStatus(String status, Pageable pageable);
