@@ -12,6 +12,12 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(OrderConflictException.class)
+    public ResponseEntity<ErrorResponse> handleOrderConflict(OrderConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(CartConflictException.class)
     public ResponseEntity<ErrorResponse> handleCartConflict(CartConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

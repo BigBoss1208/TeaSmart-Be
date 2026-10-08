@@ -67,7 +67,7 @@ public class AdminProductService {
 
     @Transactional
     public AdminProductResponse update(Long productId, AdminProductRequest request) {
-        Product product = requireProduct(productId);
+        Product product = requireLockedProduct(productId);
         applyRequest(product, request);
         product.setUpdatedAt(LocalDateTime.now().withNano(0));
         return save(product);
@@ -75,10 +75,15 @@ public class AdminProductService {
 
     @Transactional
     public AdminProductResponse updateStatus(Long productId, AdminProductStatusRequest request) {
-        Product product = requireProduct(productId);
+        Product product = requireLockedProduct(productId);
         product.setStatus(request.status());
         product.setUpdatedAt(LocalDateTime.now().withNano(0));
         return save(product);
+    }
+
+    private Product requireLockedProduct(Long productId) {
+        return repository.findLockedByProductId(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found."));
     }
 
     private Product requireProduct(Long productId) {

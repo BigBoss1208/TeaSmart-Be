@@ -1,12 +1,17 @@
 package vn.teasmart.backend.repository;
 
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import vn.teasmart.backend.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Product> findLockedByProductId(Long productId);
 
     boolean existsBySlug(String slug);
 
