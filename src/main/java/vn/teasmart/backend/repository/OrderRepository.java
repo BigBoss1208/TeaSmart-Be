@@ -13,6 +13,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findLockedByOrderId(Long orderId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Order> findLockedByUser_UserIdAndCheckoutKey(Long userId, String checkoutKey);
+
     Page<Order> findByOrderStatus(String orderStatus, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

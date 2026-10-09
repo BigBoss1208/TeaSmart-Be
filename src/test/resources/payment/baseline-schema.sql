@@ -1,12 +1,3 @@
--- TeaSmart schema mapped from the current 19 JPA entities (including Review AI Analysis).
--- Run manually; this script is not executed by Spring Boot.
-
-CREATE DATABASE IF NOT EXISTS teasmart
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE teasmart;
-
 CREATE TABLE `users` (
   `user_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `full_name` VARCHAR(100) NOT NULL,
@@ -153,10 +144,6 @@ CREATE TABLE `orders` (
   `note` VARCHAR(500) NULL,
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
-  `checkout_key` VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
-  `checkout_request_hash` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
-  `stock_released_at` DATETIME NULL,
-  CONSTRAINT `uk_orders_user_id_checkout_key` UNIQUE (`user_id`, `checkout_key`),
   PRIMARY KEY (`order_id`),
   CONSTRAINT `uk_orders_order_code` UNIQUE (`order_code`),
   CONSTRAINT `fk_orders_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
@@ -185,18 +172,6 @@ CREATE TABLE `payments` (
   `paid_at` DATETIME NULL,
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
-  `gateway` VARCHAR(20) NULL,
-  `merchant_reference` VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NULL,
-  `expires_at` DATETIME NULL,
-  `gateway_response_code` VARCHAR(2) NULL,
-  `gateway_transaction_status` VARCHAR(2) NULL,
-  `reconciliation_required` BOOLEAN NOT NULL DEFAULT FALSE,
-  `confirmed_by_admin_id` BIGINT UNSIGNED NULL,
-  `last_reconciliation_at` DATETIME NULL,
-  CONSTRAINT `uk_payments_merchant_reference` UNIQUE (`merchant_reference`),
-  INDEX `idx_payments_status_expires_at` (`payment_status`, `expires_at`),
-  INDEX `idx_payments_confirmed_by_admin_id` (`confirmed_by_admin_id`),
-  CONSTRAINT `fk_payments_confirmed_by_admin_id` FOREIGN KEY (`confirmed_by_admin_id`) REFERENCES `users` (`user_id`),
   PRIMARY KEY (`payment_id`),
   CONSTRAINT `uk_payments_order_id` UNIQUE (`order_id`),
   CONSTRAINT `uk_payments_transaction_code` UNIQUE (`transaction_code`),

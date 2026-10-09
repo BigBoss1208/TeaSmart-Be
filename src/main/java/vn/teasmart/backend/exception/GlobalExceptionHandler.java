@@ -12,6 +12,11 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<ErrorResponse> handlePayment(PaymentException exception) {
+        return ResponseEntity.status(exception.getStatus()).body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(ReviewAiException.class)
     public ResponseEntity<ErrorResponse> handleReviewAi(ReviewAiException exception) {
         return ResponseEntity.status(exception.getStatus())

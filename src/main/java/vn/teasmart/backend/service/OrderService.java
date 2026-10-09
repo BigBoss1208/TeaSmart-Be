@@ -22,6 +22,8 @@ import vn.teasmart.backend.entity.*;
 import vn.teasmart.backend.enums.PaymentMethod;
 import vn.teasmart.backend.enums.PaymentStatus;
 import vn.teasmart.backend.exception.OrderConflictException;
+import vn.teasmart.backend.exception.PaymentException;
+import vn.teasmart.backend.config.VnpaySettings;
 import vn.teasmart.backend.exception.ResourceNotFoundException;
 import vn.teasmart.backend.repository.*;
 
@@ -38,10 +40,13 @@ public class OrderService {
     private final OrderItemRepository orderItems;
     private final PaymentRepository payments;
     private final EntityManager entityManager;
+    private final OrderStockService stockService;
+    private final VnpaySettings vnpaySettings;
+    private final VnpayGateway gateway;
 
     public OrderService(UserRepository users, CartRepository carts, CartItemRepository cartItems,
             ProductRepository products, OrderRepository orders, OrderItemRepository orderItems,
-            PaymentRepository payments, EntityManager entityManager) {
+            PaymentRepository payments, EntityManager entityManager, OrderStockService stockService, VnpaySettings vnpaySettings, VnpayGateway gateway) {
         this.users = users;
         this.carts = carts;
         this.cartItems = cartItems;
@@ -50,15 +55,37 @@ public class OrderService {
         this.orderItems = orderItems;
         this.payments = payments;
         this.entityManager = entityManager;
+        this.stockService = stockService;
+        this.vnpaySettings = vnpaySettings;
+        this.gateway = gateway;
     }
 
     @Transactional
     public OrderResponse placeOrder(Long userId, PlaceOrderRequest request) {
+        return checkout(userId, request, null, PaymentMethod.COD, "127.0.0.1").order();
+    }
+
+    @Transactional
+    public PaymentCheckoutResponse checkout(Long userId, PlaceOrderRequest request, String rawKey,
+            PaymentMethod method, String ip) {
+        if (method != PaymentMethod.COD && method != PaymentMethod.ONLINE) throw PaymentException.invalid();
+        String key = CheckoutIdentity.key(rawKey, method == PaymentMethod.ONLINE);
+        String hash = CheckoutIdentity.hash(request, method);
         User user = users.findLockedByUserId(userId)
                 .orElseThrow(() -> new BadCredentialsException("Authentication failed."));
         if (!"ACTIVE".equals(user.getStatus()) || !"CUSTOMER".equals(user.getRole())) {
             throw new BadCredentialsException("Authentication failed.");
         }
+        if (key != null) {
+            Order existing = orders.findLockedByUser_UserIdAndCheckoutKey(userId, key).orElse(null);
+            if (existing != null) {
+                if (!hash.equals(existing.getCheckoutRequestHash())) throw PaymentException.conflict("IDEMPOTENCY_KEY_REUSED");
+                Payment payment = payments.findLockedByOrder_OrderId(existing.getOrderId())
+                        .orElseThrow(() -> PaymentException.conflict("PAYMENT_MISSING"));
+                return checkoutResponse(existing, orderItems.findByOrder_OrderId(existing.getOrderId()), payment, ip, true);
+            }
+        }
+        if (method == PaymentMethod.ONLINE) vnpaySettings.requireConfigured();
         Cart cart = carts.findByUser_UserId(userId).orElseThrow(this::emptyCart);
         List<CartItem> items = cartItems.findByCart_CartId(cart.getCartId()).stream()
                 .sorted(Comparator.comparing(item -> item.getProduct().getProductId())).toList();
@@ -92,10 +119,12 @@ public class OrderService {
             snapshots.add(snapshot);
         }
 
-        LocalDateTime now = LocalDateTime.now().withNano(0);
+        LocalDateTime now = PaymentTime.now();
         Order order = new Order();
         order.setOrderCode("TS-" + UUID.randomUUID().toString().replace("-", ""));
         order.setUser(user);
+        order.setCheckoutKey(key);
+        order.setCheckoutRequestHash(key == null ? null : hash);
         order.setRecipientName(request.recipientName());
         order.setRecipientPhone(request.recipientPhone());
         order.setShippingAddress(request.shippingAddress());
@@ -117,7 +146,13 @@ public class OrderService {
         }
         Payment payment = new Payment();
         payment.setOrder(order);
-        payment.setPaymentMethod(PaymentMethod.COD);
+        payment.setPaymentMethod(method);
+        payment.setReconciliationRequired(false);
+        if (method == PaymentMethod.ONLINE) {
+            payment.setGateway("VNPAY");
+            payment.setMerchantReference("TSVNP" + UUID.randomUUID().toString().replace("-", ""));
+            payment.setExpiresAt(now.plusMinutes(vnpaySettings.expiryMinutes()));
+        }
         payment.setPaymentStatus(PaymentStatus.PENDING);
         payment.setAmount(order.getTotalAmount());
         payment.setTransactionCode(null);
@@ -128,7 +163,21 @@ public class OrderService {
         cartItems.deleteAll(items);
         cart.setUpdatedAt(now);
         entityManager.flush();
-        return toResponse(order, snapshots, payment);
+        return checkoutResponse(order, snapshots, payment, ip, false);
+    }
+
+    private PaymentCheckoutResponse checkoutResponse(Order order, List<OrderItem> items, Payment payment, String ip, boolean replayed) {
+        String url = null;
+        if (payment.getPaymentMethod() == PaymentMethod.ONLINE && payment.getPaymentStatus() == PaymentStatus.PENDING
+                && "PENDING".equals(order.getOrderStatus()) && !payment.isReconciliationRequired()
+                && payment.getExpiresAt() != null && payment.getExpiresAt().isAfter(PaymentTime.now())) {
+            try { url = gateway.paymentUrl(payment, ip); }
+            catch (PaymentException e) {
+                if (!replayed || !"VNPAY_UNAVAILABLE".equals(e.getCode())) throw e;
+                // A replay remains a successful lookup even when the gateway configuration is unavailable.
+            }
+        }
+        return new PaymentCheckoutResponse(toResponse(order, items, payment), url, payment.getExpiresAt(), replayed);
     }
 
     public PageResponse<OrderSummaryResponse> listOrders(Long userId, Pageable pageable) {
@@ -161,58 +210,15 @@ public class OrderService {
         if (!"PENDING".equals(order.getOrderStatus())) {
             throw new OrderConflictException("ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.");
         }
-        Payment payment = payments.findByOrder_OrderId(orderId).orElse(null);
+        Payment payment = payments.findLockedByOrder_OrderId(orderId).orElse(null);
         if (payment == null || payment.getPaymentMethod() != PaymentMethod.COD
                 || payment.getPaymentStatus() != PaymentStatus.PENDING || payment.getPaidAt() != null
                 || payment.getTransactionCode() != null) {
             throw new OrderConflictException("ORDER_PAYMENT_NOT_CANCELLABLE", "Order payment cannot be cancelled.");
         }
+        stockService.release(order);
         List<OrderItem> items = orderItems.findByOrder_OrderId(orderId);
-        if (items.isEmpty()) {
-            throw invalidOrderItems();
-        }
-        final long maxStock = 4294967295L;
-        Map<Long, Long> quantities = new TreeMap<>();
-        Map<Long, Product> loadedProducts = new TreeMap<>();
-        try {
-            for (OrderItem item : items) {
-                Product product = item.getProduct();
-                Long quantity = item.getQuantity();
-                if (product == null || product.getProductId() == null || product.getProductId() <= 0
-                        || quantity == null || quantity <= 0 || quantity > maxStock) {
-                    throw invalidOrderItems();
-                }
-                Long productId = product.getProductId();
-                long accumulated = quantities.getOrDefault(productId, 0L);
-                if (quantity > maxStock - accumulated) {
-                    throw new OrderConflictException("STOCK_OVERFLOW", "Restored stock exceeds INT UNSIGNED limits.");
-                }
-                quantities.put(productId, accumulated + quantity);
-                loadedProducts.put(productId, product);
-            }
-        } catch (EntityNotFoundException exception) {
-            throw invalidOrderItems();
-        }
-        // Discard all pre-lock Product state before any Product has pending changes.
-        loadedProducts.values().forEach(entityManager::detach);
-        Map<Long, Product> lockedProducts = new TreeMap<>();
-        for (Map.Entry<Long, Long> entry : quantities.entrySet()) {
-            Product product = products.findLockedByProductId(entry.getKey()).orElseThrow(this::invalidOrderItems);
-            Long stock = product.getStockQuantity();
-            if (stock == null || stock < 0 || stock > maxStock) {
-                throw new OrderConflictException("INVALID_ORDER_ITEMS", "Current product stock is invalid.");
-            }
-            if (entry.getValue() > maxStock - stock) {
-                throw new OrderConflictException("STOCK_OVERFLOW", "Restored stock exceeds INT UNSIGNED limits.");
-            }
-            lockedProducts.put(entry.getKey(), product);
-        }
-        LocalDateTime now = LocalDateTime.now().withNano(0);
-        for (Map.Entry<Long, Product> entry : lockedProducts.entrySet()) {
-            Product product = entry.getValue();
-            product.setStockQuantity(product.getStockQuantity() + quantities.get(entry.getKey()));
-            product.setUpdatedAt(now);
-        }
+        LocalDateTime now = PaymentTime.now();
         order.setOrderStatus("CANCELLED");
         order.setUpdatedAt(now);
         entityManager.flush();

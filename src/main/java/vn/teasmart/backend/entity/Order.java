@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
  * Unsigned ID values are limited to the non-negative Java Long range.
  */
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", uniqueConstraints = @UniqueConstraint(name = "uk_orders_user_id_checkout_key", columnNames = {"user_id", "checkout_key"}))
 public class Order {
 
     @Id
@@ -61,6 +62,21 @@ public class Order {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime updatedAt;
+
+    @Column(name = "checkout_key", columnDefinition = "VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin")
+    private String checkoutKey;
+    public String getCheckoutKey() { return checkoutKey; }
+    public void setCheckoutKey(String value) { this.checkoutKey = value; }
+
+    @Column(name = "checkout_request_hash", columnDefinition = "CHAR(64) CHARACTER SET ascii COLLATE ascii_bin")
+    private String checkoutRequestHash;
+    public String getCheckoutRequestHash() { return checkoutRequestHash; }
+    public void setCheckoutRequestHash(String value) { this.checkoutRequestHash = value; }
+
+    @Column(name = "stock_released_at", columnDefinition = "DATETIME")
+    private LocalDateTime stockReleasedAt;
+    public LocalDateTime getStockReleasedAt() { return stockReleasedAt; }
+    public void setStockReleasedAt(LocalDateTime value) { this.stockReleasedAt = value; }
 
     public Order() {
     }

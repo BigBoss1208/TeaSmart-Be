@@ -67,10 +67,15 @@ public class AdminOrderService {
         if (current.equals(request.status())) {
             throw new OrderConflictException("ORDER_STATUS_UNCHANGED", "Order already has the requested status.");
         }
-        Payment payment = payments.findByOrder_OrderId(orderId).orElse(null);
-        if (payment == null || payment.getPaymentMethod() != PaymentMethod.COD
-                || payment.getPaymentStatus() != PaymentStatus.PENDING || payment.getPaidAt() != null
-                || payment.getTransactionCode() != null) {
+        Payment payment = payments.findLockedByOrder_OrderId(orderId).orElse(null);
+        boolean cod = payment != null && payment.getPaymentMethod() == PaymentMethod.COD
+                && payment.getPaymentStatus() == PaymentStatus.PENDING && payment.getPaidAt() == null
+                && payment.getTransactionCode() == null;
+        boolean online = payment != null && payment.getPaymentMethod() == PaymentMethod.ONLINE
+                && "VNPAY".equals(payment.getGateway()) && payment.getPaymentStatus() == PaymentStatus.PAID
+                && payment.getPaidAt() != null && payment.getTransactionCode() != null
+                && !payment.isReconciliationRequired();
+        if ((!cod && !online) || payment.getAmount().compareTo(order.getTotalAmount()) != 0) {
             throw new OrderConflictException("ORDER_PAYMENT_NOT_PROCESSABLE", "Order payment cannot be processed.");
         }
         String next = switch (current) {
@@ -83,7 +88,7 @@ public class AdminOrderService {
             throw invalidTransition();
         }
         order.setOrderStatus(next);
-        order.setUpdatedAt(LocalDateTime.now().withNano(0));
+        order.setUpdatedAt(PaymentTime.now());
         orders.flush();
         return toResponse(order, payment);
     }

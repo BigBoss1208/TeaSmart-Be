@@ -24,10 +24,22 @@ public class OrderController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public OrderResponse placeOrder(@AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody PlaceOrderRequest request) {
-        return service.placeOrder(Long.valueOf(jwt.getSubject()), request);
+    public org.springframework.http.ResponseEntity<OrderResponse> placeOrder(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody PlaceOrderRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String key) {
+        var result = service.checkout(Long.valueOf(jwt.getSubject()), request, key,
+                vn.teasmart.backend.enums.PaymentMethod.COD, "127.0.0.1");
+        return org.springframework.http.ResponseEntity.status(result.replayed() ? 200 : 201).body(result.order());
+    }
+
+    @PostMapping("/vnpay")
+    public org.springframework.http.ResponseEntity<vn.teasmart.backend.dto.response.PaymentCheckoutResponse> checkoutVnpay(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PlaceOrderRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String key,
+            jakarta.servlet.http.HttpServletRequest http) {
+        var result = service.checkout(Long.valueOf(jwt.getSubject()), request, key,
+                vn.teasmart.backend.enums.PaymentMethod.ONLINE, http.getRemoteAddr());
+        return org.springframework.http.ResponseEntity.status(result.replayed() ? 200 : 201).body(result);
     }
 
     @GetMapping

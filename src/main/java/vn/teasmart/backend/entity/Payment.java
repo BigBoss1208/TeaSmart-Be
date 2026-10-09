@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -59,6 +60,54 @@ public class Payment {
 
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime updatedAt;
+
+    @Column(name = "gateway", nullable = true, columnDefinition = "VARCHAR(20)")
+    private String gateway;
+
+    public String getGateway() { return gateway; }
+    public void setGateway(String value) { this.gateway = value; }
+
+    @Column(name = "merchant_reference", nullable = true, columnDefinition = "VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin", unique = true)
+    private String merchantReference;
+
+    public String getMerchantReference() { return merchantReference; }
+    public void setMerchantReference(String value) { this.merchantReference = value; }
+
+    @Column(name = "expires_at", nullable = true, columnDefinition = "DATETIME")
+    private LocalDateTime expiresAt;
+
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime value) { this.expiresAt = value; }
+
+    @Column(name = "gateway_response_code", nullable = true, columnDefinition = "VARCHAR(2)")
+    private String gatewayResponseCode;
+
+    public String getGatewayResponseCode() { return gatewayResponseCode; }
+    public void setGatewayResponseCode(String value) { this.gatewayResponseCode = value; }
+
+    @Column(name = "gateway_transaction_status", nullable = true, columnDefinition = "VARCHAR(2)")
+    private String gatewayTransactionStatus;
+
+    public String getGatewayTransactionStatus() { return gatewayTransactionStatus; }
+    public void setGatewayTransactionStatus(String value) { this.gatewayTransactionStatus = value; }
+
+    @Column(name = "reconciliation_required", nullable = false, columnDefinition = "BOOLEAN")
+    private boolean reconciliationRequired;
+
+    public boolean isReconciliationRequired() { return reconciliationRequired; }
+    public void setReconciliationRequired(boolean value) { this.reconciliationRequired = value; }
+
+    @Column(name = "last_reconciliation_at", nullable = true, columnDefinition = "DATETIME")
+    private LocalDateTime lastReconciliationAt;
+
+    public LocalDateTime getLastReconciliationAt() { return lastReconciliationAt; }
+    public void setLastReconciliationAt(LocalDateTime value) { this.lastReconciliationAt = value; }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmed_by_admin_id", columnDefinition = "BIGINT UNSIGNED")
+    private User confirmedByAdmin;
+    public User getConfirmedByAdmin() { return confirmedByAdmin; }
+    public void setConfirmedByAdmin(User value) { this.confirmedByAdmin = value; }
 
     public Payment() {
     }
