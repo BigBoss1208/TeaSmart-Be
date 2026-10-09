@@ -11,6 +11,11 @@ import vn.teasmart.backend.entity.Order;
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Order> findLockedByOrderId(Long orderId);
+
+    Page<Order> findByOrderStatus(String orderStatus, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findLockedByOrderIdAndUser_UserId(Long orderId, Long userId);
 
     Page<Order> findByUser_UserId(Long userId, Pageable pageable);
