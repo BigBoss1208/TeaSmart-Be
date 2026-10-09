@@ -10,6 +10,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import vn.teasmart.backend.enums.ReviewStatus;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -19,7 +23,8 @@ import org.hibernate.type.SqlTypes;
  * Unsigned ID values are limited to the non-negative Java Long range.
  */
 @Entity
-@Table(name = "reviews")
+@Table(name = "reviews", uniqueConstraints = @UniqueConstraint(
+        name = "uk_reviews_user_id_product_id", columnNames = {"user_id", "product_id"}))
 public class Review {
 
     @Id
@@ -46,8 +51,10 @@ public class Review {
     @Column(name = "comment", nullable = true, columnDefinition = "TEXT")
     private String comment;
 
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
+    private ReviewStatus status;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime createdAt;
@@ -106,11 +113,11 @@ public class Review {
         this.comment = comment;
     }
 
-    public String getStatus() {
+    public ReviewStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(ReviewStatus status) {
         this.status = status;
     }
 

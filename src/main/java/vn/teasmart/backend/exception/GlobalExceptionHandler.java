@@ -13,6 +13,12 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ReviewConflictException.class)
+    public ResponseEntity<ErrorResponse> handleReviewConflict(ReviewConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleMethodValidation(HandlerMethodValidationException exception) {
         if (exception.isForReturnValue()) {

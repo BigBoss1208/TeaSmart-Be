@@ -199,6 +199,7 @@ CREATE TABLE `reviews` (
   `updated_at` DATETIME NOT NULL,
   PRIMARY KEY (`review_id`),
   CONSTRAINT `uk_reviews_order_item_id` UNIQUE (`order_item_id`),
+  CONSTRAINT `uk_reviews_user_id_product_id` UNIQUE (`user_id`, `product_id`),
   CONSTRAINT `fk_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `fk_reviews_product_id` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`),
   CONSTRAINT `fk_reviews_order_item_id` FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`order_item_id`)
