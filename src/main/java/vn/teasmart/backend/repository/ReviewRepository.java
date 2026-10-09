@@ -25,6 +25,17 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Review> findLockedByReviewIdAndUser_UserId(Long reviewId, Long userId);
 
+    @Query("select r.user.userId from Review r where r.reviewId = :reviewId")
+    Optional<Long> findOwnerIdByReviewId(@Param("reviewId") Long reviewId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Review> findLockedByReviewId(Long reviewId);
+
+    @Query("select r from Review r where (:productId is null or r.product.productId = :productId) "
+            + "and (:status is null or r.status = :status) and (:rating is null or r.rating = :rating)")
+    Page<Review> findForAdmin(@Param("productId") Long productId, @Param("status") ReviewStatus status,
+            @Param("rating") Integer rating, Pageable pageable);
+
     @Query("select count(r) as totalReviews, avg(r.rating) as averageRating from Review r "
             + "where r.product.productId = :productId and r.status = :status")
     RatingSummary summarize(@Param("productId") Long productId, @Param("status") ReviewStatus status);
