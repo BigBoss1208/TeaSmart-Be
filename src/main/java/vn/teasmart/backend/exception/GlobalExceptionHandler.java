@@ -12,6 +12,12 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ReviewAiException.class)
+    public ResponseEntity<ErrorResponse> handleReviewAi(ReviewAiException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
+
     @ExceptionHandler(ReviewImageException.class)
     public ResponseEntity<ErrorResponse> handleReviewImage(ReviewImageException exception) {
         return ResponseEntity.status(exception.getStatus()).body(new ErrorResponse(exception.getCode(), exception.getMessage()));
