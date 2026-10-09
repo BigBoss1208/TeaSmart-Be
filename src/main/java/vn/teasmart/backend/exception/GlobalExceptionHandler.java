@@ -12,6 +12,24 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ReviewImageException.class)
+    public ResponseEntity<ErrorResponse> handleReviewImage(ReviewImageException exception) {
+        return ResponseEntity.status(exception.getStatus()).body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleImageSize(org.springframework.web.multipart.MaxUploadSizeExceededException exception) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(new ErrorResponse("REVIEW_IMAGE_TOO_LARGE", "Multipart request exceeds the upload limit."));
+    }
+    @ExceptionHandler({org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.multipart.MultipartException.class})
+    public ResponseEntity<ErrorResponse> handleMultipart(Exception exception) {
+        return ResponseEntity.badRequest().body(new ErrorResponse("INVALID_REQUEST", "Valid multipart files are required."));
+    }
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleContentType(Exception exception) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ErrorResponse("UNSUPPORTED_IMAGE_TYPE", "Unsupported request content type."));
+    }
+
 
     @ExceptionHandler(ReviewConflictException.class)
     public ResponseEntity<ErrorResponse> handleReviewConflict(ReviewConflictException exception) {

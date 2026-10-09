@@ -19,16 +19,19 @@ import vn.teasmart.backend.repository.UserRepository;
 public class AdminReviewService {
     private final ReviewRepository reviews;
     private final UserRepository users;
+    private final ReviewImageMapper imageMapper;
 
-    public AdminReviewService(ReviewRepository reviews, UserRepository users) {
+    public AdminReviewService(ReviewRepository reviews, UserRepository users, ReviewImageMapper imageMapper) {
         this.reviews = reviews;
         this.users = users;
+        this.imageMapper = imageMapper;
     }
 
     public PageResponse<AdminReviewResponse> getAll(Long productId, ReviewStatus status,
             Integer rating, Pageable pageable) {
         Page<Review> page = reviews.findForAdmin(productId, status, rating, pageable);
-        return new PageResponse<>(page.getContent().stream().map(this::toResponse).toList(),
+        var images = imageMapper.forReviews(page.getContent().stream().map(Review::getReviewId).toList());
+        return new PageResponse<>(page.getContent().stream().map(review -> toResponse(review, images.getOrDefault(review.getReviewId(), java.util.List.of()))).toList(),
                 page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
@@ -69,9 +72,13 @@ public class AdminReviewService {
     }
 
     private AdminReviewResponse toResponse(Review review) {
+        return toResponse(review, imageMapper.forReview(review.getReviewId()));
+    }
+
+    private AdminReviewResponse toResponse(Review review, java.util.List<vn.teasmart.backend.dto.response.ReviewImageResponse> images) {
         return new AdminReviewResponse(review.getReviewId(), review.getProduct().getProductId(),
                 review.getProduct().getName(), review.getUser().getUserId(), review.getUser().getFullName(),
                 review.getOrderItem().getOrderItemId(), review.getRating(), review.getComment(), review.getStatus(),
-                review.getCreatedAt(), review.getUpdatedAt());
+                review.getCreatedAt(), review.getUpdatedAt(), images);
     }
 }

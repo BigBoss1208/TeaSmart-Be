@@ -55,6 +55,7 @@ public class SecurityConfig {
                         "/api/categories", "/api/categories/**",
                         "/api/tea-regions", "/api/tea-regions/**",
                         "/api/stores", "/api/stores/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/review-images/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("CUSTOMER", "ADMIN")
                 .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/addresses", "/api/addresses/**").hasRole("CUSTOMER")

@@ -25,13 +25,15 @@ public class ReviewService {
     private final UserRepository users;
     private final ProductRepository products;
     private final OrderItemRepository orderItems;
+    private final ReviewImageMapper imageMapper;
 
     public ReviewService(ReviewRepository reviews, UserRepository users,
-            ProductRepository products, OrderItemRepository orderItems) {
+            ProductRepository products, OrderItemRepository orderItems, ReviewImageMapper imageMapper) {
         this.reviews = reviews;
         this.users = users;
         this.products = products;
         this.orderItems = orderItems;
+        this.imageMapper = imageMapper;
     }
 
     @Transactional
@@ -73,7 +75,8 @@ public class ReviewService {
 
     public PageResponse<ReviewResponse> getMine(Long userId, Pageable pageable) {
         Page<Review> page = reviews.findByUser_UserId(userId, pageable);
-        return new PageResponse<>(page.getContent().stream().map(this::toResponse).toList(),
+        var images = imageMapper.forReviews(page.getContent().stream().map(Review::getReviewId).toList());
+        return new PageResponse<>(page.getContent().stream().map(review -> toResponse(review, images.getOrDefault(review.getReviewId(), java.util.List.of()))).toList(),
                 page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
@@ -105,9 +108,10 @@ public class ReviewService {
     public PageResponse<PublicReviewResponse> getPublic(Long productId, Pageable pageable) {
         requireProduct(productId);
         Page<Review> page = reviews.findByProduct_ProductIdAndStatus(productId, ReviewStatus.APPROVED, pageable);
+        var images = imageMapper.forReviews(page.getContent().stream().map(Review::getReviewId).toList());
         return new PageResponse<>(page.getContent().stream().map(review -> new PublicReviewResponse(
                 review.getReviewId(), review.getUser().getFullName(), review.getRating(), review.getComment(),
-                review.getCreatedAt(), review.getUpdatedAt())).toList(),
+                review.getCreatedAt(), review.getUpdatedAt(), images.getOrDefault(review.getReviewId(), java.util.List.of()))).toList(),
                 page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
@@ -169,8 +173,12 @@ public class ReviewService {
     }
 
     private ReviewResponse toResponse(Review review) {
+        return toResponse(review, imageMapper.forReview(review.getReviewId()));
+    }
+
+    private ReviewResponse toResponse(Review review, java.util.List<ReviewImageResponse> images) {
         return new ReviewResponse(review.getReviewId(), review.getProduct().getProductId(),
                 review.getOrderItem().getOrderItemId(), review.getRating(), review.getComment(),
-                review.getStatus(), review.getCreatedAt(), review.getUpdatedAt());
+                review.getStatus(), review.getCreatedAt(), review.getUpdatedAt(), images);
     }
 }

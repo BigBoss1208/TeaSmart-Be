@@ -1,4 +1,4 @@
--- TeaSmart schema mapped from the current 17 JPA entities.
+-- TeaSmart schema mapped from the current 18 JPA entities (including Review Images).
 -- Run manually; this script is not executed by Spring Boot.
 
 CREATE DATABASE IF NOT EXISTS teasmart
@@ -203,6 +203,19 @@ CREATE TABLE `reviews` (
   CONSTRAINT `fk_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `fk_reviews_product_id` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`),
   CONSTRAINT `fk_reviews_order_item_id` FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`order_item_id`)
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `review_images` (
+  review_image_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  review_id BIGINT UNSIGNED NOT NULL,
+  storage_key VARCHAR(255) NOT NULL,
+  content_type VARCHAR(30) NOT NULL,
+  file_size BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL,
+  PRIMARY KEY (review_image_id),
+  CONSTRAINT uk_review_images_storage_key UNIQUE (storage_key),
+  INDEX idx_review_images_review_id_review_image_id (review_id, review_image_id),
+  CONSTRAINT fk_review_images_review_id FOREIGN KEY (review_id) REFERENCES reviews(review_id)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `product_views` (
