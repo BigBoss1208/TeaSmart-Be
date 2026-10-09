@@ -1,6 +1,7 @@
 package vn.teasmart.backend.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -42,5 +43,10 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public OrderResponse getOrder(@AuthenticationPrincipal Jwt jwt, @PathVariable Long orderId) {
         return service.getOrder(Long.valueOf(jwt.getSubject()), orderId);
+    }
+
+    @PatchMapping("/{orderId}/cancel")
+    public OrderResponse cancelOrder(@AuthenticationPrincipal Jwt jwt, @PathVariable @Positive Long orderId) {
+        return service.cancelOrder(Long.valueOf(jwt.getSubject()), orderId);
     }
 }

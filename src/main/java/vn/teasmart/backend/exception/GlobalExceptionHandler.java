@@ -7,10 +7,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleMethodValidation(HandlerMethodValidationException exception) {
+        if (exception.isForReturnValue()) {
+            return handleUnexpectedError(exception);
+        }
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_REQUEST", "Invalid request parameter value."));
+    }
 
     @ExceptionHandler(OrderConflictException.class)
     public ResponseEntity<ErrorResponse> handleOrderConflict(OrderConflictException exception) {

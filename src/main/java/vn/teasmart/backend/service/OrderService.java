@@ -1,11 +1,14 @@
 package vn.teasmart.backend.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -141,6 +144,83 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found."));
         Payment payment = payments.findByOrder_OrderId(orderId).orElse(null);
         return toResponse(order, orderItems.findByOrder_OrderId(orderId), payment);
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(Long userId, Long orderId) {
+        User user = users.findLockedByUserId(userId)
+                .orElseThrow(() -> new BadCredentialsException("Authentication failed."));
+        if (!"ACTIVE".equals(user.getStatus()) || !"CUSTOMER".equals(user.getRole())) {
+            throw new BadCredentialsException("Authentication failed.");
+        }
+        Order order = orders.findLockedByOrderIdAndUser_UserId(orderId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found."));
+        if ("CANCELLED".equals(order.getOrderStatus())) {
+            throw new OrderConflictException("ORDER_ALREADY_CANCELLED", "Order is already cancelled.");
+        }
+        if (!"PENDING".equals(order.getOrderStatus())) {
+            throw new OrderConflictException("ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.");
+        }
+        Payment payment = payments.findByOrder_OrderId(orderId).orElse(null);
+        if (payment == null || payment.getPaymentMethod() != PaymentMethod.COD
+                || payment.getPaymentStatus() != PaymentStatus.PENDING || payment.getPaidAt() != null
+                || payment.getTransactionCode() != null) {
+            throw new OrderConflictException("ORDER_PAYMENT_NOT_CANCELLABLE", "Order payment cannot be cancelled.");
+        }
+        List<OrderItem> items = orderItems.findByOrder_OrderId(orderId);
+        if (items.isEmpty()) {
+            throw invalidOrderItems();
+        }
+        final long maxStock = 4294967295L;
+        Map<Long, Long> quantities = new TreeMap<>();
+        Map<Long, Product> loadedProducts = new TreeMap<>();
+        try {
+            for (OrderItem item : items) {
+                Product product = item.getProduct();
+                Long quantity = item.getQuantity();
+                if (product == null || product.getProductId() == null || product.getProductId() <= 0
+                        || quantity == null || quantity <= 0 || quantity > maxStock) {
+                    throw invalidOrderItems();
+                }
+                Long productId = product.getProductId();
+                long accumulated = quantities.getOrDefault(productId, 0L);
+                if (quantity > maxStock - accumulated) {
+                    throw new OrderConflictException("STOCK_OVERFLOW", "Restored stock exceeds INT UNSIGNED limits.");
+                }
+                quantities.put(productId, accumulated + quantity);
+                loadedProducts.put(productId, product);
+            }
+        } catch (EntityNotFoundException exception) {
+            throw invalidOrderItems();
+        }
+        // Discard all pre-lock Product state before any Product has pending changes.
+        loadedProducts.values().forEach(entityManager::detach);
+        Map<Long, Product> lockedProducts = new TreeMap<>();
+        for (Map.Entry<Long, Long> entry : quantities.entrySet()) {
+            Product product = products.findLockedByProductId(entry.getKey()).orElseThrow(this::invalidOrderItems);
+            Long stock = product.getStockQuantity();
+            if (stock == null || stock < 0 || stock > maxStock) {
+                throw new OrderConflictException("INVALID_ORDER_ITEMS", "Current product stock is invalid.");
+            }
+            if (entry.getValue() > maxStock - stock) {
+                throw new OrderConflictException("STOCK_OVERFLOW", "Restored stock exceeds INT UNSIGNED limits.");
+            }
+            lockedProducts.put(entry.getKey(), product);
+        }
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        for (Map.Entry<Long, Product> entry : lockedProducts.entrySet()) {
+            Product product = entry.getValue();
+            product.setStockQuantity(product.getStockQuantity() + quantities.get(entry.getKey()));
+            product.setUpdatedAt(now);
+        }
+        order.setOrderStatus("CANCELLED");
+        order.setUpdatedAt(now);
+        entityManager.flush();
+        return toResponse(order, items, payment);
+    }
+
+    private OrderConflictException invalidOrderItems() {
+        return new OrderConflictException("INVALID_ORDER_ITEMS", "Order items contain missing or invalid product data.");
     }
 
     private void requirePurchasable(Product product, Long quantity) {
