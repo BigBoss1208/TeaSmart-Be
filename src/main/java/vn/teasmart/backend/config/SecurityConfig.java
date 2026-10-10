@@ -51,13 +51,14 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET,
-                        "/api/products", "/api/products/**",
+                        "/api/products", "/api/products/**", "/api/recommendations",
                         "/api/categories", "/api/categories/**",
                         "/api/tea-regions", "/api/tea-regions/**",
                         "/api/stores", "/api/stores/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/review-images/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("CUSTOMER", "ADMIN")
+                .requestMatchers("/api/chatbot/**", "/api/recommendations/preferences").hasRole("CUSTOMER")
                 .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/addresses", "/api/addresses/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/reviews", "/api/reviews/**").hasRole("CUSTOMER")
