@@ -74,6 +74,7 @@ class PaymentMysqlTest {
             for (String part : migration.replaceAll("(?m)^--.*$", "").split(";")) {
                 String sql = part.replaceAll("(?m)^--.*$", "").trim(); if (!sql.isEmpty()) s.execute(sql);
             }
+            s.execute(Files.readString(Path.of("database/migrations/auth05_add_google_email.sql")));
         }
         byte[] jwt = new byte[32]; new java.security.SecureRandom().nextBytes(jwt);
         r.add("spring.datasource.url", () -> url); r.add("spring.datasource.username", () -> USER); r.add("spring.datasource.password", () -> PASSWORD);
