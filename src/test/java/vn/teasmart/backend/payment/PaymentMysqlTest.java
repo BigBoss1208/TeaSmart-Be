@@ -49,9 +49,13 @@ class PaymentMysqlTest {
 
     @DynamicPropertySource static void database(DynamicPropertyRegistry r) throws Exception {
         String server = System.getenv("PAYMENT_TEST_SERVER_URL");
-        if (!server.matches("jdbc:mysql://(localhost|127\\.0\\.0\\.1):[0-9]+/")) throw new IllegalArgumentException("Use a local server URL with no database or query.");
+        if (!server.matches("jdbc:mysql://(localhost|127\\.0\\.0\\.1):33377/")) throw new IllegalArgumentException("Payment tests require the isolated local MySQL server on port 33377.");
         String url = server + DB;
         try (Connection c = DriverManager.getConnection(server, USER, PASSWORD); Statement s = c.createStatement()) {
+            try (ResultSet identity = s.executeQuery("SELECT @@port")) {
+                if (!identity.next() || identity.getInt(1) != 33377)
+                    throw new IllegalStateException("Refusing to write outside isolated MySQL test");
+            }
             s.execute("CREATE DATABASE `" + DB + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         }
         try (Connection c = DriverManager.getConnection(url, USER, PASSWORD); Statement s = c.createStatement()) {
@@ -76,6 +80,7 @@ class PaymentMysqlTest {
         r.add("teasmart.jwt.secret-base64", () -> Base64.getEncoder().encodeToString(jwt)); r.add("teasmart.jwt.issuer", () -> "payment-tests");
         r.add("teasmart.vnpay.enabled", () -> true); r.add("teasmart.vnpay.tmn-code", () -> "TESTONLY");
         r.add("teasmart.vnpay.hash-secret", () -> SECRET); r.add("teasmart.vnpay.return-url", () -> "http://localhost:3000/payment/vnpay-return");
+        r.add("teasmart.vnpay.reconciliation-enabled", () -> false);
         r.add("teasmart.vnpay.reconciliation-delay-ms", () -> 86400000);
         System.out.println("Payment migration test database: " + DB);
     }
