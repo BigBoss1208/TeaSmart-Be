@@ -162,7 +162,7 @@ class PaymentMysqlTest {
         r.add("teasmart.google.enabled", () -> false);
         r.add("teasmart.vnpay.enabled", () -> true); r.add("teasmart.vnpay.tmn-code", () -> "TESTONLY");
         r.add("teasmart.vnpay.hash-secret", () -> SECRET); r.add("teasmart.vnpay.return-url", () -> "http://localhost:3000/payment/vnpay-return");
-        r.add("teasmart.vnpay.verified-final-failure-pairs", () -> "51:02");
+        r.add("teasmart.vnpay.verified-final-failure-pairs", () -> "24:02,51:02");
         r.add("teasmart.vnpay.reconciliation-delay-ms", () -> 86400000);
         r.add("teasmart.vnpay.reconciliation-enabled", () -> false);
         System.out.println("Payment migration test database: " + DB);
@@ -298,7 +298,7 @@ class PaymentMysqlTest {
         long before=stock(); Result session=createBuyNowSession(1,UUID.randomUUID().toString()); long sessionId=session.json.get("checkoutSessionId").asLong();
         Result attempt=startSessionAttempt(sessionId,UUID.randomUUID().toString()); String ref=attempt.json.get("attemptReference").asText();
         String amount=new java.math.BigDecimal(attempt.json.get("session").get("totalAmount").asText()).movePointRight(2).toBigIntegerExact().toString();
-        assertEquals("00",sessionIpn(ref,"24","02","0",amount).json.get("RspCode").asText());
+        assertEquals("00",sessionIpn(ref,"00","02","0",amount).json.get("RspCode").asText());
         assertEquals("UNKNOWN",jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?",String.class,ref));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?",Integer.class,sessionId)); assertEquals(before-1,stock());
         assertEquals("00",sessionIpn(ref,"00","00","1002",amount).json.get("RspCode").asText());
@@ -470,11 +470,11 @@ class PaymentMysqlTest {
         var amount = created.json.path("totalAmount").decimalValue();
         String cents = VnpayGateway.amount(amount);
         Map<String, String> payload = new TreeMap<>(Map.of("vnp_TmnCode", "TESTONLY", "vnp_TxnRef", ref,
-                "vnp_Amount", cents, "vnp_ResponseCode", "24", "vnp_TransactionStatus", "02", "vnp_TransactionNo", "0"));
+                "vnp_Amount", cents, "vnp_ResponseCode", "00", "vnp_TransactionStatus", "02", "vnp_TransactionNo", "0"));
         payload.put("vnp_SecureHash", gateway.sign(VnpayGateway.canonical(payload)));
         assertEquals(200, call("POST", "/api/payments/vnpay/return", customer, payload, null).status);
-        assertEquals("04", sessionIpn(ref, "24", "02", "0", "1").json.path("RspCode").asText());
-        assertEquals("00", sessionIpn(ref, "24", "02", "0", cents).json.path("RspCode").asText());
+        assertEquals("04", sessionIpn(ref, "00", "02", "0", "1").json.path("RspCode").asText());
+        assertEquals("00", sessionIpn(ref, "00", "02", "0", cents).json.path("RspCode").asText());
         payload.put("vnp_SecureHash", "0".repeat(128));
         String invalidIpn = VnpayGateway.canonical(payload);
         assertEquals("97", call("GET", "/api/payments/vnpay/ipn?" + invalidIpn, null, null, null).json.path("RspCode").asText());
@@ -490,14 +490,14 @@ class PaymentMysqlTest {
         assertEquals("VERIFIED_FINAL_FAILURE", call("POST", adminPath, admin, null, null).json.path("outcome").asText());
         assertEquals("FAILED_FINAL", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, ref));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, sessionId));
-        assertEquals(before - 1, stock()); // A live session can retry using its existing reservation.
-        assertEquals(200, call("POST", "/api/checkout-sessions/" + sessionId + "/cancel", customer, null, null).status);
-        assertEquals(before, stock());
+        assertEquals(before, stock()); // Verified final QueryDR outcome released the reservation.
+        assertEquals("CANCELLED", jdbc.queryForObject("SELECT status FROM checkout_sessions WHERE checkout_session_id=?", String.class, sessionId));
+        assertEquals("RELEASED", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, sessionId));
 
         assertEquals(List.of(
-                "RETURN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_00:24:02",
-                "IPN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_04:24:02",
-                "IPN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_00:24:02",
+                "RETURN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_00:00:02",
+                "IPN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_04:00:02",
+                "IPN:SIGNATURE_AND_MERCHANT_VERIFIED:PROCESSING_CODE_00:00:02",
                 "QUERYDR:TIMEOUT:UNRESOLVED_RETAINED:-:-",
                 "QUERYDR:VERIFIED_RESPONSE:VERIFIED_FINAL_FAILURE:00:02"),
                 jdbc.queryForList("""
@@ -547,7 +547,7 @@ class PaymentMysqlTest {
         Result attempt = startSessionAttempt(aid, UUID.randomUUID().toString());
         String ref = attempt.json.get("attemptReference").asText();
         String amount = new java.math.BigDecimal(a.json.get("totalAmount").asText()).movePointRight(2).toBigIntegerExact().toString();
-        assertEquals("00", sessionIpn(ref, "24", "02", "0", amount).json.get("RspCode").asText());
+        assertEquals("00", sessionIpn(ref, "00", "02", "0", amount).json.get("RspCode").asText());
         assertEquals("UNKNOWN", call("GET", "/api/checkout-sessions/" + aid, customer, null, null).json.get("latestAttemptStatus").asText());
         assertEquals(404, call("GET", "/api/checkout-sessions/" + aid, other, null, null).status);
         assertEquals(404, call("GET", "/api/checkout-sessions/payment-status?reference=" + ref, other, null, null).status);
@@ -578,7 +578,7 @@ class PaymentMysqlTest {
         Result attempt = startSessionAttempt(aid, UUID.randomUUID().toString());
         String ref = attempt.json.get("attemptReference").asText();
         String amount = new java.math.BigDecimal(a.json.get("totalAmount").asText()).movePointRight(2).toBigIntegerExact().toString();
-        assertEquals("00", sessionIpn(ref, "24", "02", "0", amount).json.get("RspCode").asText());
+        assertEquals("00", sessionIpn(ref, "00", "02", "0", amount).json.get("RspCode").asText());
         assertEquals(409, call("POST", "/api/checkout-sessions/" + aid + "/confirm-cod", customer, null, null).status);
         assertEquals(409, call("POST", "/api/checkout-sessions/" + aid + "/cancel", customer, null, null).status);
         assertEquals(409, startSessionAttempt(aid, UUID.randomUUID().toString()).status);
@@ -647,7 +647,7 @@ class PaymentMysqlTest {
             assertEquals(200, pending.status);
             String ref = pending.json.path("attemptReference").asText();
             String cents = VnpayGateway.amount(original.json.path("totalAmount").decimalValue());
-            assertEquals("00", sessionIpn(ref, "24", "02", "0", cents).json.path("RspCode").asText());
+            assertEquals("00", sessionIpn(ref, "00", "02", "0", cents).json.path("RspCode").asText());
             assertEquals("UNKNOWN", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, ref));
             assertEquals("HELD", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldId));
             assertEquals(before - 1, stock());
@@ -743,7 +743,7 @@ class PaymentMysqlTest {
         Result oldAttempt = startSessionAttempt(oldId, UUID.randomUUID().toString());
         String oldRef = oldAttempt.json.path("attemptReference").asText();
         String cents = VnpayGateway.amount(original.json.path("totalAmount").decimalValue());
-        assertEquals("00", sessionIpn(oldRef, "24", "02", "0", cents).json.path("RspCode").asText());
+        assertEquals("00", sessionIpn(oldRef, "00", "02", "0", cents).json.path("RspCode").asText());
         Map<String,Object> body = new HashMap<>(Map.of("sourceType","BUY_NOW", "buyNowProductId",productId,
                 "buyNowQuantity",1,"shipping",shipping()));
         assertEquals(409, call("POST", "/api/checkout-sessions", customer, body, UUID.randomUUID().toString()).status);
@@ -774,5 +774,94 @@ class PaymentMysqlTest {
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE order_id=?",Integer.class,orderId));
         assertEquals("UNKNOWN",jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?",String.class,oldRef));
         assertEquals("HELD",jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?",String.class,oldId));
+    }
+
+    @Test @Order(22) void cancelledReleasedSessionNeverFinalizesLateChargeOrTouchesNewPurchase() throws Exception {
+        for (String method : List.of("COD", "VNPAY")) {
+            productId = seedProduct(100000, 4, 100);
+            long before = stock();
+            Result original = createBuyNowSession(1, UUID.randomUUID().toString());
+            long oldId = original.json.path("checkoutSessionId").asLong();
+            String ref = startSessionAttempt(oldId, UUID.randomUUID().toString()).json.path("attemptReference").asText();
+            String cents = VnpayGateway.amount(original.json.path("totalAmount").decimalValue());
+            assertEquals("00", sessionIpn(ref, "24", "02", "0", cents).json.path("RspCode").asText());
+            long newId = createBuyNowSession(1, UUID.randomUUID().toString()).json.path("checkoutSessionId").asLong();
+            if (method.equals("COD")) assertEquals(200, call("POST", "/api/checkout-sessions/" + newId + "/confirm-cod", customer, null, null).status);
+            else assertEquals(200, startSessionAttempt(newId, UUID.randomUUID().toString()).status);
+            var pool = Executors.newFixedThreadPool(3);
+            try {
+                var jobs = new ArrayList<Future<Result>>();
+                for (int i = 0; i < 3; i++) jobs.add(pool.submit(() -> sessionIpn(ref, "00", "00", Long.toString(980000 + oldId), cents)));
+                for (var job : jobs) { Result response = job.get(); assertTrue(List.of("00", "02").contains(response.json.path("RspCode").asText()), response.json.toString()); }
+            } finally { pool.shutdownNow(); }
+            assertEquals("SUCCEEDED", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, ref));
+            assertTrue(jdbc.queryForObject("SELECT reconciliation_required FROM payment_attempts WHERE merchant_reference=?", Boolean.class, ref));
+            assertEquals("RECONCILIATION_REQUIRED", jdbc.queryForObject("SELECT status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldId));
+            assertEquals("RELEASED", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldId));
+            assertThrows(vn.teasmart.backend.exception.PaymentException.class, () -> checkoutSessions.finalizePaidSession(oldId));
+            assertEquals("00", sessionIpn(ref, "24", "02", "0", cents).json.path("RspCode").asText());
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, oldId));
+            assertEquals(method.equals("COD") ? 1 : 0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, newId));
+            assertEquals(before - 1, stock());
+        }
+    }
+
+    @Test @Order(21) void verifiedReturnCancellationReleasesOnceAndAllowsFreshCodOrVnpaySession() throws Exception {
+        for (String nextMethod : List.of("COD", "VNPAY")) {
+            productId = seedProduct(215000, 6, 250);
+            long before = stock();
+            Result original = createBuyNowSession(1, UUID.randomUUID().toString());
+            long oldSessionId = original.json.path("checkoutSessionId").asLong();
+            Result oldAttempt = startSessionAttempt(oldSessionId, UUID.randomUUID().toString());
+            String oldRef = oldAttempt.json.path("attemptReference").asText();
+            String cents = VnpayGateway.amount(original.json.path("totalAmount").decimalValue());
+            Map<String, String> cancel = new TreeMap<>(Map.of("vnp_TmnCode", "TESTONLY", "vnp_TxnRef", oldRef,
+                    "vnp_Amount", cents, "vnp_ResponseCode", "24", "vnp_TransactionStatus", "02", "vnp_TransactionNo", "0"));
+            cancel.put("vnp_SecureHash", gateway.sign(VnpayGateway.canonical(cancel)));
+
+            Map<String, String> invalid = new TreeMap<>(cancel);
+            invalid.put("vnp_SecureHash", "0".repeat(128));
+            assertEquals(400, call("POST", "/api/payments/vnpay/return", customer, invalid, null).status);
+            assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, oldRef));
+            assertEquals("HELD", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldSessionId));
+            assertEquals(before - 1, stock());
+
+            assertEquals(200, call("POST", "/api/payments/vnpay/return", customer, cancel, null).status);
+            assertEquals("FAILED_FINAL", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, oldRef));
+            assertEquals("CANCELLED", jdbc.queryForObject("SELECT status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldSessionId));
+            assertEquals("RELEASED", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldSessionId));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, oldSessionId));
+            assertEquals(before, stock());
+            assertEquals(200, call("POST", "/api/payments/vnpay/return", customer, cancel, null).status);
+            assertEquals("00", sessionIpn(oldRef, "24", "02", "0", cents).json.path("RspCode").asText());
+            assertEquals(before, stock());
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, oldSessionId));
+
+            Result fresh = call("POST", "/api/checkout-sessions", customer,
+                    Map.of("sourceType", "BUY_NOW", "buyNowProductId", productId, "buyNowQuantity", 1, "shipping", shipping()),
+                    UUID.randomUUID().toString());
+            assertEquals(201, fresh.status, String.valueOf(fresh.json));
+            long freshSessionId = fresh.json.path("checkoutSessionId").asLong();
+            assertNotEquals(oldSessionId, freshSessionId);
+            assertEquals("FAILED_FINAL", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, oldRef));
+            assertEquals("CANCELLED", jdbc.queryForObject("SELECT status FROM checkout_sessions WHERE checkout_session_id=?", String.class, oldSessionId));
+            assertEquals(before - 1, stock());
+            if ("COD".equals(nextMethod)) {
+                Result cod = call("POST", "/api/checkout-sessions/" + freshSessionId + "/confirm-cod", customer, null, null);
+                assertEquals(200, cod.status);
+                assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, freshSessionId));
+                assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?", Integer.class, oldSessionId));
+                assertEquals(before - 1, stock());
+            } else {
+                Result freshAttempt = startSessionAttempt(freshSessionId, UUID.randomUUID().toString());
+                String freshRef = freshAttempt.json.path("attemptReference").asText();
+                assertNotEquals(oldRef, freshRef);
+                assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?", String.class, freshRef));
+                assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM payment_attempts WHERE checkout_session_id=?", Integer.class, freshSessionId));
+                assertEquals("00", sessionIpn(freshRef, "24", "02", "0", VnpayGateway.amount(freshAttempt.json.path("session").path("totalAmount").decimalValue())).json.path("RspCode").asText());
+                assertEquals("RELEASED", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, freshSessionId));
+                assertEquals(before, stock());
+            }
+        }
     }
 }
