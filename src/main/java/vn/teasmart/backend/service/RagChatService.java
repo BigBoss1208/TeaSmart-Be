@@ -16,15 +16,15 @@ public class RagChatService {
   if(!Set.of("localhost","127.0.0.1","[::1]").contains(base.getHost())||!"http".equals(base.getScheme())||base.getUserInfo()!=null||base.getQuery()!=null||base.getFragment()!=null||!(base.getPath().isEmpty()||base.getPath().equals("/")))throw new IllegalArgumentException("RAG service must be loopback HTTP.");endpoint=base.resolve("/answer");
  }
  public RagChatResponse answer(RagChatRequest request){
-  if(!enabled)throw new Failure("RAG_DISABLED",503);
   List<String> history=request.history()==null?List.of():request.history();
   for(String text:java.util.stream.Stream.concat(java.util.stream.Stream.of(request.message()),history.stream()).toList())if(text.matches("(?is).*\\bBearer\\s+\\S+.*")||text.matches("(?s).*eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+.*"))throw new Failure("RAG_PRIVATE_INPUT",400);
   var snapshot=business.snapshot(request);var advice=snapshot.advice();
   // Business facts never pass through an LLM: cards and figures originate in server-owned SQL.
   if(!snapshot.kind().equals("KNOWLEDGE")){
-   String reply=switch(snapshot.kind()){case "BESTSELLERS"->snapshot.facts().isEmpty()?"Chưa có dữ liệu đơn DELIVERED và thanh toán PAID hợp lệ để xếp hạng.":"Top tối đa 5 sản phẩm theo tổng số gói của đơn DELIVERED, Payment PAID đã xác minh, không cần đối soát; toàn bộ thời gian. Dữ liệu tại thời điểm truy vấn.";case "REVIEWS"->snapshot.facts().isEmpty()?"Chưa có đánh giá APPROVED để xếp hạng.":"Xếp theo điểm trung bình từ đánh giá APPROVED; kèm số lượt đánh giá, không dùng đánh giá bị ẩn.";default->"Thông tin sản phẩm và tồn kho tại thời điểm truy vấn được hiển thị bên dưới. Giá và tồn kho sẽ được kiểm tra lại khi đặt hàng.";};
+   String reply=switch(snapshot.kind()){case "BESTSELLERS"->snapshot.facts().isEmpty()?"Chưa có dữ liệu đơn DELIVERED và thanh toán PAID hợp lệ để xếp hạng.":"Top tối đa 5 sản phẩm theo tổng số gói của đơn DELIVERED, Payment PAID đã xác minh, không cần đối soát; toàn bộ thời gian. Dữ liệu tại thời điểm truy vấn.";case "REVIEWS"->snapshot.facts().isEmpty()?"Chưa có đánh giá APPROVED để xếp hạng.":"Xếp theo điểm trung bình từ đánh giá APPROVED; kèm số lượt đánh giá, không dùng đánh giá bị ẩn.";default->snapshot.facts().isEmpty()?"Hiện chưa có sản phẩm phù hợp. Bạn có thể đổi ngân sách hoặc nhu cầu; hệ thống không tự nới bộ lọc.":"Thông tin sản phẩm và tồn kho tại thời điểm truy vấn được hiển thị bên dưới. Giá và tồn kho sẽ được kiểm tra lại khi đặt hàng.";};
    return new RagChatResponse("READ_ONLY_BUSINESS_V1",reply,advice.preferences(),advice.notices(),advice.recommendations(),List.of(),null,false,snapshot.kind(),snapshot.facts());
   }
+  if(!enabled)throw new Failure("RAG_DISABLED",503);
   if(Boolean.FALSE.equals(request.allowLlm()))throw new Failure("RAG_LLM_DISABLED",503);
   if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("LLM call cannot hold database transaction.");
   var body=Map.of("question",request.message(),"history",history);

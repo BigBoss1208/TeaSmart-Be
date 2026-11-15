@@ -30,8 +30,10 @@ class TeaAdvisorMysqlTest {
     @Autowired JdbcTemplate jdbc;
     @DynamicPropertySource static void database(DynamicPropertyRegistry r) throws Exception {
         r.add("teasmart.seller.enabled",()->false);
+        r.add("teasmart.rag.enabled",()->false);
         String server=System.getenv("PAYMENT_TEST_SERVER_URL");
         if(!server.matches("jdbc:mysql://(localhost|127\\.0\\.0\\.1):[0-9]+/")) throw new IllegalArgumentException("Local test server only.");
+        if(!server.equals("jdbc:mysql://127.0.0.1:33377/")&&!server.equals("jdbc:mysql://localhost:33377/"))throw new IllegalArgumentException("Advisor integration requires isolated MySQL 33377.");
         try(var c=DriverManager.getConnection(server,System.getenv("PAYMENT_TEST_USERNAME"),System.getenv("PAYMENT_TEST_PASSWORD"));var s=c.createStatement()) {
             s.execute("CREATE DATABASE `"+DB+"` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         }
@@ -134,6 +136,16 @@ class TeaAdvisorMysqlTest {
         for(String path:List.of("/api/products","/api/categories","/api/tea-regions","/api/stores"))assertEquals(200,call("GET",path,null,null).status);
         for(String path:List.of("/api/admin/dashboard","/api/admin/customers","/api/admin/orders"))assertEquals(200,call("GET",path,admin,null).status);
         for(String path:List.of("/api/users/me","/api/cart","/api/orders","/api/addresses"))assertEquals(200,call("GET",path,customer,null).status);
+    }
+    @Test @Order(8) void catalogChatWorksWithRagDisabledUsingLiveSqlAndNoWrites()throws Exception {
+        Map<String,List<Map<String,Object>>> before=new LinkedHashMap<>();for(String t:TABLES)before.put(t,jdbc.queryForList("SELECT * FROM `"+t+"`"));
+        var body=Map.of("message","Tôi muốn mua chè ít chát dưới 300.000đ","allowLlm",false);
+        var r=call("POST","/api/chatbot/rag",customer,body);assertEquals(200,r.status);assertFalse(r.data.get("llmUsed").asBoolean());assertEquals("PRODUCTS",r.data.get("businessKind").asText());assertTrue(r.data.get("businessProducts").size()>0);
+        for(var item:r.data.get("businessProducts")){assertTrue(item.get("price").asInt()<=300000);assertTrue(item.get("stockQuantity").asInt()>0);var row=jdbc.queryForMap("SELECT price,stock_quantity FROM products WHERE product_id=?",item.get("productId").asLong());assertEquals(((Number)row.get("stock_quantity")).longValue(),item.get("stockQuantity").asLong());assertEquals(((Number)row.get("price")).intValue(),item.get("price").asInt());}
+        r=call("POST","/api/chatbot/rag",customer,Map.of("message","chè dưới 1đ","allowLlm",false));assertEquals(200,r.status);assertEquals(0,r.data.get("businessProducts").size());assertTrue(r.data.get("reply").asText().contains("chưa có"));
+        r=call("POST","/api/chatbot/rag",customer,Map.of("message","Cách pha chè","allowLlm",true));assertEquals(503,r.status);assertEquals("RAG_DISABLED",r.data.get("code").asText());
+        assertEquals(401,call("POST","/api/chatbot/rag",null,body).status);assertEquals(403,call("POST","/api/chatbot/rag",admin,body).status);
+        for(String t:TABLES)assertEquals(before.get(t),jdbc.queryForList("SELECT * FROM `"+t+"`"));
     }
     @AfterAll static void cleanup()throws Exception {
         try(var c=DriverManager.getConnection(System.getenv("PAYMENT_TEST_SERVER_URL")+DB,System.getenv("PAYMENT_TEST_USERNAME"),System.getenv("PAYMENT_TEST_PASSWORD"));var s=c.createStatement()) {

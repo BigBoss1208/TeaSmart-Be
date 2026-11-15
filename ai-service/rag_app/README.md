@@ -15,7 +15,7 @@ React `TeaAdvisor` → Spring `POST /api/chatbot/rag` (CUSTOMER) → một trong
 
 Backend (Process/IntelliJ):
 
-- `RAG_ENABLED=true` (mặc định false).
+- `RAG_ENABLED=true` (mặc định false) chỉ cho phép nhánh kiến thức gọi Python/LLM. Tra cứu sản phẩm qua `/api/chatbot/rag` vẫn hoạt động khi false, không gọi Python.
 - `RAG_SERVICE_URL=http://127.0.0.1:8002` (chỉ HTTP loopback).
 - Các biến datasource/JWT cũ giữ nguyên; chọn đúng DB test khi nghiệm thu ghi. Không tự chạy migration.
 
@@ -88,3 +88,12 @@ npm run build
 Maven MySQL tests mặc định có thể SKIP khi chưa bật profile/biến test riêng. Không bật chúng với DB chính. Xem kết quả cụ thể và nghiệm thu cô lập trong `BaoCaoTrienKhai/AI_CHATBOT/AI_CHATBOT_RAG_FINAL_REPORT.md`.
 
 Bước nghiệm thu còn thiếu: có provider endpoint/model/key hợp lệ → script nhập ẩn → health llmConfigured=true → các câu hỏi kiến thức trên browser có sources → kiểm tra quote/ý nghĩa và tính trung thực → đánh giá ít nhất một tập câu hỏi gán nhãn thủ công. Chưa có kết quả thì không đánh dấu RAG/LLM PASS.
+
+## Chatbot integration (15/11/2026)
+
+- `/ai` opens TeaAdvisor; `/leaf` remains the separate leaf preview tool.
+- Full page and floating widget default to catalog mode (`allowLlm=false`). Product, budget and taste questions use the existing read-only catalog services, even when `RAG_ENABLED=false`.
+- Knowledge mode is an explicit user selection. It needs the backend flag, Python service and all three provider variables above. Missing configuration/provider errors remain visible, never replaced with a fabricated LLM answer.
+- Catalog data is current at request time, not a stock reservation. No payment, order or inventory writes are made by chat.
+- Verification: MySQL integration tests exercise catalog data and authentication; Chrome UI smoke uses intercepted synthetic API responses. Neither establishes a successful real provider call.
+- After configuring the provider privately, restart Python and the IntelliJ backend. On `/ai`, select knowledge mode and ask “Cách pha chè để giữ hương thơm?”. Verify the response says RAG + LLM and includes source links. Do not label this PASS until a real provider response is observed.
