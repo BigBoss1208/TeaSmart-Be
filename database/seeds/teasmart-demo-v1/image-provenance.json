@@ -1,0 +1,230 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "id": 1,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-0e2340af-6193-461f-a34d-de7443246442.png",
+      "target": "ts-demo-001.png",
+      "prompt": "Use case: product-mockup. Create ONE square premium ecommerce product photograph-style AI illustration for TeaSmart demo product TS-DEMO-001, Trà Đinh Ngọc Tân Cương. Original conceptual packaging, no reference brands. One compact dark moss-green cylindrical tea tin with restrained champagne-gold typography reading only 'TeaSmart', loose needle-shaped tea on a small ceramic dish, ivory teacup, natural walnut wood surface, warm cream backdrop, soft professional side lighting, realistic restrained textures. Three-quarter composition with generous breathing room, product fully visible, crisp catalogue quality. No geographic imagery, no seals/certifications, no origin/health/quality claims, no watermark, no extra text or prices. This is illustrative concept imagery for a clearly labeled demo catalog, not a real manufacturer photograph.",
+      "sha256": "1568be7d22e694146a01ce05002165ae6e97b683ee536c7793eaecac384e72ff",
+      "bytes": 2186074,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 2,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-2c2e35b3-d5af-4646-9dd9-9424c39677a9.png",
+      "target": "ts-demo-002.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-002, concept title Trà Đinh Tiến Vua. Subject and distinct composition: tall narrow moss-green tea canister beside an ivory porcelain tasting cup, diagonal dark walnut tea scoop. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "d923cef5e055272d97596ac691918708c540c8d09949ceb02575a384f0ef4e98",
+      "bytes": 2133443,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 3,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-62c37a76-4d26-4d68-9e08-a52191e901c2.png",
+      "target": "ts-demo-003.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-003, concept title Trà Đinh Thượng Phẩm. Subject and distinct composition: low wide rectangular forest-green presentation box, lid slightly open, shallow dish of fine dry tea and two small cups. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "f55e284a3bed18040982aef9ff05e6c519edf2ff41c46ad20b93c7d49f68d055",
+      "bytes": 2671057,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 4,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-e025c97c-c20b-4b77-9c52-0e5bd8f917ad.png",
+      "target": "ts-demo-004.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-004, concept title Trà Nõn Tôm Tân Cương. Subject and distinct composition: slim matte-green upright tea pouch with gold minimal label, white ceramic saucer of dry tea, ivory cup on wood. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "be2c15d3bf33d27b48dd1f4cc8642a53df9478dafc82d1f1a19b13df91a6b0ba",
+      "bytes": 2387246,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 5,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-212c80b7-e1a3-4c57-a8f7-2a228716b897.png",
+      "target": "ts-demo-005.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-005, concept title Trà Nõn Tôm Thượng Hạng. Subject and distinct composition: pair of compact green tins, one open showing loose leaves, single celadon cup and bamboo scoop. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "6dff4b98b92f93ee19a1c2edc02e23437afd364b93bf0e019cb7a8b3f6187660",
+      "bytes": 2256695,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 6,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-76de1f44-e21a-4dd1-a31e-935cc8bec813.png",
+      "target": "ts-demo-006.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-006, concept title Trà Nõn Tôm Ngọc Diệp. Subject and distinct composition: cream cylindrical tin with a moss-green band and fine champagne rim, leaves on a dark ceramic tasting dish. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "d3f606540aa4c1d50eab9bf20f9e2cf5cca837abc6ca0d152c1967545df6be59",
+      "bytes": 2314714,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 7,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-f1d8c57a-df11-49a0-a23d-71aa1e2da87b.png",
+      "target": "ts-demo-007.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-007, concept title Trà Móc Câu Tân Cương. Subject and distinct composition: small square green tea tin on an oak riser, curled dry leaves in a white bowl, small tea cup to the left. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "cdef86a8d96c30c28d80cbdf91663dd5dec713017dce13fd9fe253f8db480762",
+      "bytes": 2339788,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 8,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-57b9b22a-3403-4a96-9673-ab6a7caa5dc2.png",
+      "target": "ts-demo-008.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-008, concept title Trà Móc Câu Đặc Biệt. Subject and distinct composition: vertical moss-green rectangular carton with gold edge details, loose curled tea on a wooden scoop, cup to the right. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "3564aa8377b9a8647ebba54332f45f25b571f986bbcabc369c7cd248d96fa982",
+      "bytes": 2346808,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 9,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-a341b705-6c19-4ab6-b306-09373cce27e9.png",
+      "target": "ts-demo-009.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-009, concept title Trà Móc Câu Thượng Hạng. Subject and distinct composition: large forest-green cylindrical tea caddy, smaller cup in foreground, spoonful of tea leaves and cream linen. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "085943c3f450ee4b01ec0a9fdfd22bffba91dbbd2bad699e81fdb919375aaf3c",
+      "bytes": 2353318,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 10,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-e58237a3-35ae-41c0-b0a9-d588f37e3d7e.png",
+      "target": "ts-demo-010.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-010, concept title Trà Búp Non Thái Nguyên. Subject and distinct composition: light-ivory kraft tea pouch with dark green label, soft tea leaves on a wooden plate and an ivory cup. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "2e2081963d5d8bb8ba81876eeb1f0e5c22b0b108a90d727ffd5f94c6135cead8",
+      "bytes": 2231694,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 11,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-4b579adb-a672-471e-a22b-ced75c0d4ff5.png",
+      "target": "ts-demo-011.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-011, concept title Trà Búp Non Hảo Hạng. Subject and distinct composition: short moss-green square tea box, amber tea in a pale ceramic cup, loose leaves along a wood tray. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "a61874be15704f3745982ad55e0e18d7c5eaca7be40026cd98f6bbd537f213f5",
+      "bytes": 2491285,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 12,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-86305b4e-d481-439a-bc1b-abacec855b6c.png",
+      "target": "ts-demo-012.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-012, concept title Trà Tân Cương Đặc Sản. Subject and distinct composition: green rectangular tea package standing on natural wood, ivory tea cup, large plate of dried tea to the side. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "ea90bc2f9bf96a6b9fa5203e6ca73ba2a4673b85e9cb285d8aa58897267234a4",
+      "bytes": 2354776,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 13,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-a23ad574-c023-4744-9638-b285a0c65400.png",
+      "target": "ts-demo-013.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-013, concept title Trà La Bằng Đặc Sản. Subject and distinct composition: rounded green ceramic tea jar with wooden lid, ivory cup on square coaster, tea scoop holding dried leaves. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "f735faa338d12dba8c8ad700c7b8b91f647cb0668513c695302934ebdca507c5",
+      "bytes": 2384743,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 14,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-a7e7f402-95e5-4920-b599-5c4e27ba7519.png",
+      "target": "ts-demo-014.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-014, concept title Trà Khe Cốc Thượng Hạng. Subject and distinct composition: two stacked small forest-green tins with gold accents, celadon cup, dark dish of dry tea, minimalist styling. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "0737364ccdf2497f76a67edfa325210188bde50534535e2a112d7ce6218de192",
+      "bytes": 2263810,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 15,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-d5f1ad20-905b-4033-9559-df2e7451f998.png",
+      "target": "ts-demo-015.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-015, concept title Trà Trại Cài Hảo Hạng. Subject and distinct composition: short wide cream tea canister with forest-green sleeve, tea cup on walnut tray, leaves on small ivory dish. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "d2be826b10045fa506118f8ed696379f0289a628d110dd0e67698b12ca9cd93d",
+      "bytes": 2170614,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 16,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-1cb6a881-3a32-4a27-9e9d-3a2ecc36fd28.png",
+      "target": "ts-demo-016.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-016, concept title Trà Tân Cương Thiên Hương. Subject and distinct composition: elegant forest-green rigid box with fine gold leaf motif, ivory cup and arranged dry tea on stone dish. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "eeec1f101c1ceb9df0e4839704dfc1d0d380ce983309923b800a88a6044b22ac",
+      "bytes": 2661306,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 17,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-d74dc48b-6a58-4b9a-8683-ae4597fd343c.png",
+      "target": "ts-demo-017.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-017, concept title Trà Tân Cương Ngọc Diệp. Subject and distinct composition: ivory tea box with dark moss-green inset panel and thin champagne border, dry leaves and pale cup, wood surface. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "3286589f77993526b4cd08d9b1f369256c3be20daba5e42743c1faa2d822268b",
+      "bytes": 2310295,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 18,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-391d7d94-760a-41e8-b07a-9c56d1a08fd5.png",
+      "target": "ts-demo-018.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-018, concept title Hộp Trà Đinh Ngọc Quà Tặng. Subject and distinct composition: open champagne-lined dark green gift box containing two original TeaSmart tins, two ivory tasting cups, loose tea dish. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "1192ef8c8d384ef6c8609216e78a0a571df3d38268796fc8b50040c0696e07a4",
+      "bytes": 2512650,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 19,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-9bc1b6ee-1f2a-4641-a022-bfcf2f2bb03a.png",
+      "target": "ts-demo-019.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-019, concept title Hộp Trà Nõn Tôm Tinh Hoa. Subject and distinct composition: open cream gift presentation case with forest-green trim containing slim tea containers, small tea bowl and cup. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "0b37c26ffd38dfc6c6826291a0c52830b2a45e099df0baa4e8e35bee68b27b18",
+      "bytes": 2527270,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 20,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-cda02d95-ec3e-4b92-85d0-16463dae5a85.png",
+      "target": "ts-demo-020.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-020, concept title Bộ Quà Tặng Trà Tân Cương. Subject and distinct composition: wooden gift box with dark green sleeve containing two original tea caddies and two simple ivory cups, dry leaves beside. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "dc058de34531e0af059a2a4bad992dc51522e0478ee23eebd703779c5f75dd96",
+      "bytes": 2324826,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 21,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-1acd1867-7180-4f9a-89a7-e02139e3654e.png",
+      "target": "ts-demo-021.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-021, concept title Trà Đinh Bạch Ngọc. Subject and distinct composition: tall ivory canister with forest-green top and tiny gold rim, pale cup in foreground, needle-shaped dry tea dish. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "7805be60a0cdc5340acfb62d0d49ae9e19b0066677de6d524dccfb9d4e2d4b7b",
+      "bytes": 2072461,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 22,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-805b6ba8-65b8-4a54-8c5b-250c2e52ef9f.png",
+      "target": "ts-demo-022.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-022, concept title Trà Nõn Tôm Tuyển Chọn. Subject and distinct composition: slender forest-green tea pouch and matching small tin, ivory cup on linen coaster and dry leaves in wooden scoop. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "97835e21ed289abb8bfdc04a372ac5b8e400d4eddca37295814054279b3f71f5",
+      "bytes": 2431927,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 23,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-9859a0e1-2854-4ada-81b1-dcfd062729b9.png",
+      "target": "ts-demo-023.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-023, concept title Trà Móc Câu Phúc Xuân. Subject and distinct composition: rectangular moss-green tea caddy turned at an angle, curled leaves in shallow ivory bowl, teacup behind. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "40a6a5526e520e8201be4baec5011c62b457a9c3fd0bb0026203a6bccc48148a",
+      "bytes": 2407968,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 24,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-80e4f036-dc3a-4475-bb47-a594deb17210.png",
+      "target": "ts-demo-024.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-024, concept title Hộp Trà Ngự Phẩm TeaSmart. Subject and distinct composition: large elegant open forest-green gift case lined in warm cream with original TeaSmart tea tins, porcelain tasting cups and tea scoop. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "7409a415527344818f6d101e3ebfd9656141dc999d7aecaf70e079b9ad14e19a",
+      "bytes": 2608708,
+      "illustration": "AI-generated concept, not actual product photograph"
+    },
+    {
+      "id": 25,
+      "source": "C:\\Users\\quang\\.codex\\generated_images\\01a10824-d1e0-7da2-a305-2160e528d6d2\\exec-35c60860-1d2b-4578-ab80-1059814f2eae.png",
+      "target": "ts-demo-025.png",
+      "prompt": "Use case: product-mockup. ONE square premium ecommerce photograph-style AI illustration for TeaSmart demo catalog item TS-DEMO-025, concept title Bộ Trà Tinh Hoa Thái Nguyên. Subject and distinct composition: horizontal walnut gift box with forest-green wrap containing three small tea containers, two cream cups and loose leaves. Original unbranded conceptual packaging branded only with exact text \"TeaSmart\"; never another brand. Consistent palette dark moss green, muted champagne gold, ivory cream and natural wood. Professional soft side-lit studio photography, realistic texture, clean uncluttered editorial catalogue styling, product entirely visible with breathing space. Do not depict geographic landscape or assert origin. No certifications, quality seals, health claims, product grades, prices, geographic label text or watermarks. Only readable packaging text is \"TeaSmart\". This is a conceptual AI demo product illustration, not a real manufacturer photo.",
+      "sha256": "92ca742320389911b814abc82567a01bd9a388d0aa9d47fee5ff7000fd88e11a",
+      "bytes": 2385096,
+      "illustration": "AI-generated concept, not actual product photograph"
+    }
+  ]
+}

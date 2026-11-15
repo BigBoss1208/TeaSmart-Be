@@ -49,7 +49,9 @@ public class SecurityConfig {
                         .authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login",
+                        "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/reset-password/verify").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/google", "/api/auth/google/challenge").permitAll()
                 .requestMatchers(HttpMethod.GET,
                         "/api/products", "/api/products/**", "/api/recommendations",
                         "/api/categories", "/api/categories/**",
@@ -58,11 +60,21 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/ipn").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/review-images/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("CUSTOMER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/avatars/*").permitAll()
+                .requestMatchers("/api/users/me/**").hasAnyRole("CUSTOMER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/auth/google/link/callback").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/google/link", "/api/auth/google/link/start", "/api/auth/google/link/complete").hasRole("CUSTOMER")
                 .requestMatchers("/api/chatbot/**", "/api/recommendations/preferences").hasRole("CUSTOMER")
+                 .requestMatchers("/api/wishlist", "/api/wishlist/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/addresses", "/api/addresses/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/reviews", "/api/reviews/**").hasRole("CUSTOMER")
+                .requestMatchers("/api/checkout-sessions/**").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.POST, "/api/payments/vnpay/return").hasRole("CUSTOMER")
                 .requestMatchers("/api/orders", "/api/orders/**").hasRole("CUSTOMER")
+                .requestMatchers("/api/seller-applications", "/api/seller-applications/me").hasRole("CUSTOMER")
+                .requestMatchers("/api/seller/**").hasRole("SELLER")
+                .requestMatchers(HttpMethod.GET, "/api/shop-logos/*").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().denyAll())
                 .build();

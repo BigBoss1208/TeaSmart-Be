@@ -25,6 +25,8 @@ import vn.teasmart.backend.repository.TeaRegionRepository;
 @Service
 @Transactional(readOnly = true)
 public class AdminProductService {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private vn.teasmart.backend.seller.SellerAdminProductGuard sellerGuard;
     private final ProductRepository repository;
     private final CategoryRepository categoryRepository;
     private final TeaRegionRepository regionRepository;
@@ -68,6 +70,10 @@ public class AdminProductService {
     @Transactional
     public AdminProductResponse update(Long productId, AdminProductRequest request) {
         Product product = requireLockedProduct(productId);
+        if(sellerGuard!=null)sellerGuard.update(product,request);
+        Long expected=request.expectedStockQuantity();
+        if (!(expected==null ? request.stockQuantity() : expected).equals(product.getStockQuantity()))
+            throw new vn.teasmart.backend.exception.ProfileException(409,"STOCK_CHANGED","Tồn kho đã thay đổi. Vui lòng tải lại sản phẩm trước khi lưu.");
         applyRequest(product, request);
         product.setUpdatedAt(LocalDateTime.now().withNano(0));
         return save(product);
@@ -76,6 +82,7 @@ public class AdminProductService {
     @Transactional
     public AdminProductResponse updateStatus(Long productId, AdminProductStatusRequest request) {
         Product product = requireLockedProduct(productId);
+        if(sellerGuard!=null)sellerGuard.status(productId,request.status());
         product.setStatus(request.status());
         product.setUpdatedAt(LocalDateTime.now().withNano(0));
         return save(product);

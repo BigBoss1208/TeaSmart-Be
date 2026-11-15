@@ -1,4 +1,5 @@
 package vn.teasmart.backend.advisor;
+import vn.teasmart.backend.TestSchemaSupport;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -28,6 +29,7 @@ class TeaAdvisorMysqlTest {
     @LocalServerPort int port;
     @Autowired JdbcTemplate jdbc;
     @DynamicPropertySource static void database(DynamicPropertyRegistry r) throws Exception {
+        r.add("teasmart.seller.enabled",()->false);
         String server=System.getenv("PAYMENT_TEST_SERVER_URL");
         if(!server.matches("jdbc:mysql://(localhost|127\\.0\\.0\\.1):[0-9]+/")) throw new IllegalArgumentException("Local test server only.");
         try(var c=DriverManager.getConnection(server,System.getenv("PAYMENT_TEST_USERNAME"),System.getenv("PAYMENT_TEST_PASSWORD"));var s=c.createStatement()) {
@@ -39,6 +41,7 @@ class TeaAdvisorMysqlTest {
                 if(!sql.startsWith("CREATE TABLE"))throw new IllegalArgumentException("Unexpected fixture schema.");
                 s.execute(sql);var m=java.util.regex.Pattern.compile("CREATE TABLE `?([a-z_]+)").matcher(sql);assertTrue(m.find());TABLES.add(m.group(1));
             }
+            TABLES.addAll(TestSchemaSupport.applyCheckoutMigration(c));
         }
         byte[] secret=new byte[48];new java.security.SecureRandom().nextBytes(secret);
         r.add("spring.datasource.url",()->server+DB);r.add("spring.datasource.username",()->System.getenv("PAYMENT_TEST_USERNAME"));r.add("spring.datasource.password",()->System.getenv("PAYMENT_TEST_PASSWORD"));

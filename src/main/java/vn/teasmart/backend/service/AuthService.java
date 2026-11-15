@@ -11,6 +11,7 @@ import vn.teasmart.backend.dto.request.RegisterRequest;
 import vn.teasmart.backend.dto.response.UserResponse;
 import vn.teasmart.backend.entity.User;
 import vn.teasmart.backend.exception.DuplicateEmailException;
+import vn.teasmart.backend.exception.DuplicatePhoneException;
 import vn.teasmart.backend.repository.UserRepository;
 import vn.teasmart.backend.dto.request.LoginRequest;
 import vn.teasmart.backend.dto.response.AuthResponse;
@@ -18,6 +19,7 @@ import vn.teasmart.backend.security.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
+import vn.teasmart.backend.util.LoginIdentifier;
 
 @Service
 public class AuthService {
@@ -27,30 +29,34 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserService userService;
+    private final vn.teasmart.backend.notification.OrderNotifications notifications;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager, JwtService jwtService, UserService userService) {
+            AuthenticationManager authenticationManager, JwtService jwtService, UserService userService, vn.teasmart.backend.notification.OrderNotifications notifications) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userService = userService;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String identifier = LoginIdentifier.normalize(request.email());
         // BCrypt must never silently truncate a supplied password.
         if (request.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
             throw new BadCredentialsException("Authentication failed.");
         }
-        authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
-        User user = userRepository.findByEmail(email)
+        var authentication = authenticationManager.authenticate(
+                UsernamePasswordAuthenticationToken.unauthenticated(identifier, request.password()));
+        User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new BadCredentialsException("Authentication failed."));
         user = userService.requireActiveUser(user.getUserId());
-        return new AuthResponse(jwtService.generateAccessToken(user), "Bearer",
+        var response = new AuthResponse(jwtService.generateAccessToken(user), "Bearer",
                 jwtService.getExpirationSeconds(), userService.getCurrentUser(user.getUserId()));
+        notifications.loggedIn(user, false);
+        return response;
     }
 
     @Transactional
@@ -59,13 +65,16 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException();
         }
+        if (userRepository.existsByPhone(request.phone())) {
+            throw new DuplicatePhoneException();
+        }
 
         LocalDateTime now = LocalDateTime.now();
         User user = new User();
         user.setFullName(request.fullName().trim());
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setPhone(request.phone().trim());
+        user.setPhone(request.phone());
         user.setRole("CUSTOMER");
         user.setStatus("ACTIVE");
         user.setAvatarUrl(null);
@@ -74,24 +83,27 @@ public class AuthService {
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
-            if (isEmailUniqueViolation(exception)) {
+            if (isUniqueViolation(exception, "uk_users_email")) {
                 throw new DuplicateEmailException();
+            }
+            if (isUniqueViolation(exception, "uk_users_phone")) {
+                throw new DuplicatePhoneException();
             }
             throw exception;
         }
-        return new UserResponse(user.getUserId(), user.getFullName(), user.getEmail(),
-                user.getPhone(), user.getAvatarUrl(), user.getRole(), user.getCreatedAt());
+        notifications.welcome(user);
+        return userService.getCurrentUser(user.getUserId());
     }
 
-    private boolean isEmailUniqueViolation(Throwable exception) {
+    private boolean isUniqueViolation(Throwable exception, String expectedConstraint) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException violation) {
                 String constraint = violation.getConstraintName();
                 if (constraint != null) {
                     String normalized = constraint.replace("`", "").replace("'", "");
                     if (violation.getErrorCode() == 1062
-                            && (normalized.equals("uk_users_email")
-                            || normalized.equals("users.uk_users_email"))) {
+                            && (normalized.equals(expectedConstraint)
+                            || normalized.equals("users." + expectedConstraint))) {
                         return true;
                     }
                 }

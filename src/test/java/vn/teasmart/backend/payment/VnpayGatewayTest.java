@@ -81,4 +81,65 @@ class VnpayGatewayTest {
         assertThrows(PaymentException.class, () -> CheckoutIdentity.key(null, true));
         assertNull(CheckoutIdentity.key(null, false));
     }
+    @Test void localIpv6LoopbackIsCanonicalizedForGatewayFieldLength() {
+        Payment p = new Payment(); p.setAmount(new BigDecimal("100000")); p.setMerchantReference("TSVNPiptest");
+        p.setCreatedAt(PaymentTime.now()); p.setExpiresAt(p.getCreatedAt().plusMinutes(15));
+        for (String ip : List.of("::1", "0:0:0:0:0:0:0:1", "::ffff:127.0.0.1")) {
+            var url = URI.create(gateway().paymentUrl(p, ip));
+            var data = new TreeMap<String,String>();
+            for (String pair : url.getRawQuery().split("&")) {
+                var parts = pair.split("=", 2); data.put(parts[0], URLDecoder.decode(parts[1], StandardCharsets.UTF_8));
+            }
+            assertEquals("127.0.0.1", data.get("vnp_IpAddr"));
+            String signature = data.remove("vnp_SecureHash");
+            assertTrue(gateway().validSignature(VnpayGateway.canonical(data), signature));
+        }
+    }
+    @ParameterizedTest @ValueSource(strings = {"999.999.999.999", "1.2.3", "beef", "1:2:3", "::ffff:999.1.1.1", "127.0.0.1, 8.8.8.8", "localhost"})
+    void invalidIpNeverProducesGatewayUrl(String ip) {
+        Payment p = new Payment(); p.setAmount(new BigDecimal("100000")); p.setMerchantReference("TSVNPiptest");
+        p.setCreatedAt(PaymentTime.now()); p.setExpiresAt(p.getCreatedAt().plusMinutes(15));
+        assertThrows(PaymentException.class, () -> gateway().paymentUrl(p, ip));
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"110000.00", "120000.00", "240000.00", "234567.89"})
+    void completePay21ContractRemainsCanonical(String amount) throws Exception {
+        Payment p = new Payment(); p.setAmount(new BigDecimal(amount));
+        p.setMerchantReference("TSVNP0123456789abcdef0123456789abcdef");
+        p.setCreatedAt(LocalDateTime.of(2026, 10, 22, 18, 1, 44));
+        p.setExpiresAt(p.getCreatedAt().plusMinutes(15));
+        var settings = new VnpaySettings(true, "TESTONLY", secret,
+                "https://merchant.invalid/payment/vnpay-return", 15);
+        String raw = new VnpayGateway(settings).paymentUrl(p, "127.0.0.1");
+        URI url = URI.create(raw);
+        assertEquals("https", url.getScheme());
+        assertEquals("/paymentv2/vpcpay.html", url.getPath());
+        var values = new TreeMap<String, String>();
+        var keys = new ArrayList<String>();
+        for (String pair : url.getRawQuery().split("&")) {
+            var parts = pair.split("=", 2); keys.add(parts[0]);
+            assertNull(values.put(parts[0], URLDecoder.decode(parts[1], StandardCharsets.UTF_8)));
+        }
+        String signature = values.remove("vnp_SecureHash"); keys.remove("vnp_SecureHash");
+        assertEquals(new ArrayList<>(values.keySet()), keys);
+        assertEquals(Set.of("vnp_Version", "vnp_Command", "vnp_TmnCode", "vnp_Amount",
+                "vnp_CurrCode", "vnp_TxnRef", "vnp_OrderInfo", "vnp_OrderType", "vnp_Locale",
+                "vnp_ReturnUrl", "vnp_IpAddr", "vnp_CreateDate", "vnp_ExpireDate"), values.keySet());
+        assertEquals("2.1.0", values.get("vnp_Version")); assertEquals("pay", values.get("vnp_Command"));
+        assertEquals("vn", values.get("vnp_Locale")); assertEquals("VND", values.get("vnp_CurrCode"));
+        assertEquals("other", values.get("vnp_OrderType"));
+        assertTrue(values.get("vnp_OrderInfo").matches("[A-Za-z0-9 ]{1,255}"));
+        assertTrue(values.get("vnp_TxnRef").matches("[A-Za-z0-9]{1,100}"));
+        assertEquals(new BigDecimal(amount).movePointRight(2).toBigIntegerExact().toString(), values.get("vnp_Amount"));
+        assertEquals("20261022180144", values.get("vnp_CreateDate"));
+        assertEquals("20261022181644", values.get("vnp_ExpireDate"));
+        assertEquals(settings.returnUrl(), values.get("vnp_ReturnUrl"));
+        assertTrue(signature.matches("[0-9a-f]{128}"));
+        String canonical = VnpayGateway.canonical(values);
+        assertEquals(canonical + "&vnp_SecureHash=" + signature, url.getRawQuery());
+        var mac = javax.crypto.Mac.getInstance("HmacSHA512");
+        mac.init(new javax.crypto.spec.SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+        assertEquals(HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8))), signature);
+    }
+
 }

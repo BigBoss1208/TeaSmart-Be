@@ -30,6 +30,8 @@ public class CartService {
     private static final String INSUFFICIENT_STOCK = "INSUFFICIENT_STOCK";
     private static final BigDecimal ZERO_AMOUNT = new BigDecimal("0.00");
 
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private vn.teasmart.backend.seller.CheckoutShopScope shopScope;
     private final CartRepository cartRepository;
     private final CartItemRepository itemRepository;
     private final ProductRepository productRepository;
@@ -123,7 +125,8 @@ public class CartService {
     }
 
     private String availabilityReason(Product product, long quantity) {
-        if (!"ACTIVE".equals(product.getStatus()) || !"ACTIVE".equals(product.getCategory().getStatus())
+        boolean sellerListing=shopScope!=null&&shopScope.activeSellerListing(product.getProductId());
+        if (!("ACTIVE".equals(product.getStatus())||sellerListing) || !"ACTIVE".equals(product.getCategory().getStatus())
                 || !"ACTIVE".equals(product.getRegion().getStatus()) || !"ACTIVE".equals(product.getStore().getStatus())) {
             return PRODUCT_UNAVAILABLE;
         }
@@ -157,8 +160,9 @@ public class CartService {
         Product product = item.getProduct();
         String reason = availabilityReason(product, item.getQuantity());
         BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+        var shop=shopScope==null ? vn.teasmart.backend.seller.CheckoutShopScope.LEGACY : shopScope.product(product.getProductId());
         return new CartItemResponse(item.getCartItemId(), product.getProductId(), product.getName(), product.getSlug(),
                 product.getImageUrl(), product.getPrice(), item.getQuantity(), subtotal, product.getStockQuantity(),
-                reason == null, reason);
+                reason == null, reason, shop.id(), shop.name());
     }
 }

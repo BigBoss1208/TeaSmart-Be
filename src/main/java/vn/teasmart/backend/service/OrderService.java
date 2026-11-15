@@ -17,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.teasmart.backend.dto.request.PlaceOrderRequest;
+import vn.teasmart.backend.dto.request.ShippingInfoUpdateRequest;
 import vn.teasmart.backend.dto.response.*;
 import vn.teasmart.backend.entity.*;
 import vn.teasmart.backend.enums.PaymentMethod;
@@ -40,13 +41,18 @@ public class OrderService {
     private final OrderItemRepository orderItems;
     private final PaymentRepository payments;
     private final EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private vn.teasmart.backend.seller.CheckoutShopScope shopScope;
     private final OrderStockService stockService;
     private final VnpaySettings vnpaySettings;
     private final VnpayGateway gateway;
+    private final vn.teasmart.backend.notification.OrderNotifications notifications;
+    private final PaymentAttemptRepository paymentAttempts;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public OrderService(UserRepository users, CartRepository carts, CartItemRepository cartItems,
             ProductRepository products, OrderRepository orders, OrderItemRepository orderItems,
-            PaymentRepository payments, EntityManager entityManager, OrderStockService stockService, VnpaySettings vnpaySettings, VnpayGateway gateway) {
+            PaymentRepository payments, EntityManager entityManager, OrderStockService stockService, VnpaySettings vnpaySettings, VnpayGateway gateway, vn.teasmart.backend.notification.OrderNotifications notifications, PaymentAttemptRepository paymentAttempts) {
         this.users = users;
         this.carts = carts;
         this.cartItems = cartItems;
@@ -58,6 +64,17 @@ public class OrderService {
         this.stockService = stockService;
         this.vnpaySettings = vnpaySettings;
         this.gateway = gateway;
+        this.notifications = notifications;
+        this.paymentAttempts = paymentAttempts;
+    }
+
+    public OrderService(UserRepository users, CartRepository carts, CartItemRepository cartItems,
+            ProductRepository products, OrderRepository orders, OrderItemRepository orderItems,
+            PaymentRepository payments, EntityManager entityManager, OrderStockService stockService,
+            VnpaySettings vnpaySettings, VnpayGateway gateway,
+            vn.teasmart.backend.notification.OrderNotifications notifications) {
+        this(users, carts, cartItems, products, orders, orderItems, payments, entityManager, stockService,
+                vnpaySettings, gateway, notifications, null);
     }
 
     @Transactional
@@ -68,9 +85,32 @@ public class OrderService {
     @Transactional
     public PaymentCheckoutResponse checkout(Long userId, PlaceOrderRequest request, String rawKey,
             PaymentMethod method, String ip) {
+        return checkoutInternal(userId, request, rawKey, method, ip, null, null);
+    }
+
+    @Transactional
+    public PaymentCheckoutResponse buyNow(Long userId, vn.teasmart.backend.dto.request.BuyNowRequest request,
+            String key, PaymentMethod method, String ip) {
+        if (request.productId() == null || request.productId() < 1 || request.quantity() == null
+                || request.quantity() < 1 || request.shipping() == null) throw PaymentException.invalid();
+        CheckoutIdentity.key(key, true);
+        return checkoutInternal(userId, request.shipping(), key, method, ip, request, null);
+    }
+
+    @Transactional
+    public PaymentCheckoutResponse selected(Long userId, vn.teasmart.backend.dto.request.SelectedCheckoutRequest request,
+            String key, PaymentMethod method, String ip) {
+        CheckoutIdentity.key(key,true);
+        CheckoutIdentity.selectedHash(request,method);
+        return checkoutInternal(userId,request.shipping(),key,method,ip,null,request);
+    }
+
+    private PaymentCheckoutResponse checkoutInternal(Long userId, PlaceOrderRequest request, String rawKey,
+            PaymentMethod method, String ip, vn.teasmart.backend.dto.request.BuyNowRequest direct, vn.teasmart.backend.dto.request.SelectedCheckoutRequest selected) {
         if (method != PaymentMethod.COD && method != PaymentMethod.ONLINE) throw PaymentException.invalid();
         String key = CheckoutIdentity.key(rawKey, method == PaymentMethod.ONLINE);
-        String hash = CheckoutIdentity.hash(request, method);
+        String hash = selected != null ? CheckoutIdentity.selectedHash(selected,method) : direct == null ? CheckoutIdentity.hash(request, method)
+                : CheckoutIdentity.buyNowHash(request, method, direct.productId(), direct.quantity());
         User user = users.findLockedByUserId(userId)
                 .orElseThrow(() -> new BadCredentialsException("Authentication failed."));
         if (!"ACTIVE".equals(user.getStatus()) || !"CUSTOMER".equals(user.getRole())) {
@@ -85,36 +125,58 @@ public class OrderService {
                 return checkoutResponse(existing, orderItems.findByOrder_OrderId(existing.getOrderId()), payment, ip, true);
             }
         }
-        if (method == PaymentMethod.ONLINE) vnpaySettings.requireConfigured();
-        Cart cart = carts.findByUser_UserId(userId).orElseThrow(this::emptyCart);
-        List<CartItem> items = cartItems.findByCart_CartId(cart.getCartId()).stream()
-                .sorted(Comparator.comparing(item -> item.getProduct().getProductId())).toList();
-        if (items.isEmpty()) {
-            throw emptyCart();
+        // Legacy VNPay endpoints must not create official orders before payment verification.
+        // Existing idempotent replays above remain readable for orders created before this flow.
+        if (method == PaymentMethod.ONLINE) {
+            throw PaymentException.conflict("CHECKOUT_SESSION_REQUIRED");
         }
+        Cart cart = null;
+        List<CartItem> items = List.of();
+        Map<Long, Long> quantities = new TreeMap<>();
+        if (direct == null) {
+            cart = carts.findByUser_UserId(userId).orElseThrow(this::emptyCart);
+            items = cartItems.findByCart_CartId(cart.getCartId());
+            if(selected!=null) {
+                Map<Long,CartItem> owned=new TreeMap<>();
+                for(CartItem item:items) owned.put(item.getCartItemId(),item);
+                List<CartItem> chosen=new ArrayList<>();
+                for(var selection:selected.items().stream().sorted(Comparator.comparing(vn.teasmart.backend.dto.request.SelectedCheckoutRequest.Item::cartItemId)).toList()) {
+                    CartItem item=owned.get(selection.cartItemId());
+                    if(item==null || !selection.quantity().equals(item.getQuantity())) throw new OrderConflictException("CART_SELECTION_CHANGED","Selected cart items or quantities changed.");
+                    chosen.add(item);
+                }
+                items=chosen;
+            }
+            if (items.isEmpty()) throw emptyCart();
+            for (CartItem item : items) {
+                quantities.put(item.getProduct().getProductId(), item.getQuantity());
+                entityManager.detach(item.getProduct());
+            }
+        } else quantities.put(direct.productId(), direct.quantity());
 
         // CartItem access may initialize Product proxies before the locking query.
+        var shop = shopScope==null ? null : shopScope.resolve(quantities.keySet());
         List<OrderItem> snapshots = new ArrayList<>();
         BigDecimal subtotal = ZERO;
-        for (CartItem item : items) {
-            Long productId = item.getProduct().getProductId();
+        for (var selection : quantities.entrySet()) {
+            Long productId = selection.getKey();
+            Long quantity = selection.getValue();
             // Discard previously loaded state so the locking current read hydrates fresh values.
             // A subsequent plain refresh can read an older REPEATABLE_READ snapshot.
-            entityManager.detach(item.getProduct());
             Product product = products.findLockedByProductId(productId)
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found."));
-            requirePurchasable(product, item.getQuantity());
+            requirePurchasable(product, quantity);
             BigDecimal price = requireAmount(product.getPrice());
             if (price.signum() <= 0) {
                 throw new OrderConflictException("INVALID_PRODUCT_PRICE", "Product price must be positive.");
             }
-            BigDecimal lineTotal = requireAmount(price.multiply(BigDecimal.valueOf(item.getQuantity())));
+            BigDecimal lineTotal = requireAmount(price.multiply(BigDecimal.valueOf(quantity)));
             subtotal = requireAmount(subtotal.add(lineTotal));
             OrderItem snapshot = new OrderItem();
             snapshot.setProduct(product);
             snapshot.setProductName(product.getName());
             snapshot.setUnitPrice(price);
-            snapshot.setQuantity(item.getQuantity());
+            snapshot.setQuantity(quantity);
             snapshot.setSubtotal(lineTotal);
             snapshots.add(snapshot);
         }
@@ -136,6 +198,7 @@ public class OrderService {
         order.setCreatedAt(now);
         order.setUpdatedAt(now);
         saveOrder(order);
+        if(shopScope!=null)shopScope.saveOrder(order.getOrderId(),shop);
 
         for (OrderItem snapshot : snapshots) {
             snapshot.setOrder(order);
@@ -160,10 +223,14 @@ public class OrderService {
         payment.setCreatedAt(now);
         payment.setUpdatedAt(now);
         payments.save(payment);
-        cartItems.deleteAll(items);
-        cart.setUpdatedAt(now);
+        if (cart != null) {
+            cartItems.deleteAll(items);
+            cart.setUpdatedAt(now);
+        }
         entityManager.flush();
-        return checkoutResponse(order, snapshots, payment, ip, false);
+        var response = checkoutResponse(order, snapshots, payment, ip, false);
+        notifications.placed(order, snapshots, payment);
+        return response;
     }
 
     private PaymentCheckoutResponse checkoutResponse(Order order, List<OrderItem> items, Payment payment, String ip, boolean replayed) {
@@ -192,6 +259,30 @@ public class OrderService {
         Order order = orders.findByOrderIdAndUser_UserId(orderId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found."));
         Payment payment = payments.findByOrder_OrderId(orderId).orElse(null);
+        return toResponse(order, orderItems.findByOrder_OrderId(orderId), payment);
+    }
+
+    @Transactional
+    public OrderResponse updateShippingInfo(Long userId, Long orderId, ShippingInfoUpdateRequest request) {
+        User user = users.findLockedByUserId(userId)
+                .orElseThrow(() -> new BadCredentialsException("Authentication failed."));
+        if (!"ACTIVE".equals(user.getStatus()) || !"CUSTOMER".equals(user.getRole()))
+            throw new BadCredentialsException("Authentication failed.");
+        Order order = orders.findLockedByOrderIdAndUser_UserId(orderId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found."));
+        Payment payment = payments.findLockedByOrder_OrderId(orderId).orElse(null);
+        if (!"PENDING".equals(order.getOrderStatus()) || payment == null || payment.isReconciliationRequired())
+            throw new OrderConflictException("SHIPPING_INFO_LOCKED", "Shipping details can no longer be changed.");
+        CheckoutSession session = order.getCheckoutSession();
+        if (session != null && (session.getStatus() == vn.teasmart.backend.enums.CheckoutSessionStatus.RECONCILIATION_REQUIRED
+                || session.getStatus() == vn.teasmart.backend.enums.CheckoutSessionStatus.PAID_PENDING_ORDER
+                || paymentAttempts.existsByCheckoutSession_CheckoutSessionIdAndReconciliationRequiredTrue(session.getCheckoutSessionId())))
+            throw new OrderConflictException("SHIPPING_INFO_RECONCILIATION", "This order is under payment reconciliation.");
+        order.setRecipientName(request.recipientName());
+        order.setRecipientPhone(request.recipientPhone());
+        order.setShippingAddress(request.shippingAddress());
+        order.setUpdatedAt(PaymentTime.now());
+        entityManager.flush();
         return toResponse(order, orderItems.findByOrder_OrderId(orderId), payment);
     }
 
@@ -233,7 +324,8 @@ public class OrderService {
         if (quantity == null || quantity < 1 || quantity > 4294967295L) {
             throw new OrderConflictException("INVALID_QUANTITY", "Cart quantity is invalid.");
         }
-        if (!"ACTIVE".equals(product.getStatus()) || !"ACTIVE".equals(product.getCategory().getStatus())
+        boolean sellerListingActive = shopScope != null && shopScope.activeSellerListing(product.getProductId());
+        if ((!"ACTIVE".equals(product.getStatus()) && !sellerListingActive) || !"ACTIVE".equals(product.getCategory().getStatus())
                 || !"ACTIVE".equals(product.getRegion().getStatus()) || !"ACTIVE".equals(product.getStore().getStatus())) {
             throw new OrderConflictException("PRODUCT_UNAVAILABLE", "Product is unavailable.");
         }

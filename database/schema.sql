@@ -11,7 +11,9 @@ CREATE TABLE `users` (
   `user_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `full_name` VARCHAR(100) NOT NULL,
   `email` VARCHAR(255) NOT NULL,
-  `password_hash` VARCHAR(255) NOT NULL,
+  `password_hash` VARCHAR(255) NULL,
+  `google_sub` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+  `google_email` VARCHAR(255) NULL,
   `phone` VARCHAR(20) NULL,
   `role` VARCHAR(20) NOT NULL,
   `status` VARCHAR(20) NOT NULL,
@@ -19,7 +21,9 @@ CREATE TABLE `users` (
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
   PRIMARY KEY (`user_id`),
-  CONSTRAINT `uk_users_email` UNIQUE (`email`)
+  CONSTRAINT `uk_users_email` UNIQUE (`email`),
+  CONSTRAINT `uk_users_phone` UNIQUE (`phone`),
+  CONSTRAINT `uk_users_google_sub` UNIQUE (`google_sub`)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `addresses` (
@@ -290,4 +294,15 @@ CREATE TABLE `leaf_classifications` (
   `created_at` DATETIME NOT NULL,
   PRIMARY KEY (`classification_id`),
   CONSTRAINT `fk_leaf_classifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `product_images` (
+ `image_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+ `product_id` BIGINT UNSIGNED NOT NULL,
+ `image_url` VARCHAR(500) NOT NULL,
+ `sort_order` TINYINT UNSIGNED NOT NULL,
+ `created_at` DATETIME NOT NULL,
+ PRIMARY KEY (`image_id`),
+ UNIQUE KEY `uk_product_image_order` (`product_id`,`sort_order`),
+ CONSTRAINT `fk_product_images_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

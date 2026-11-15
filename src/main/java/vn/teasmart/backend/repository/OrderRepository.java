@@ -24,4 +24,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByUser_UserId(Long userId, Pageable pageable);
 
     Optional<Order> findByOrderIdAndUser_UserId(Long orderId, Long userId);
+
+    Optional<Order> findByCheckoutSession_CheckoutSessionId(Long checkoutSessionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Order> findLockedByCheckoutSession_CheckoutSessionId(Long checkoutSessionId);
 }

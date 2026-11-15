@@ -26,10 +26,12 @@ public class PaymentService {
     private final OrderStockService stock;
     private final EntityManager em;
     private final Set<String> finalFailurePairs;
+    private final vn.teasmart.backend.notification.OrderNotifications notifications;
     public PaymentService(OrderRepository orders, PaymentRepository payments, UserRepository users,
             OrderStockService stock, EntityManager em,
-            @Value("${teasmart.vnpay.verified-final-failure-pairs:}") String pairs) {
+            @Value("${teasmart.vnpay.verified-final-failure-pairs:}") String pairs, vn.teasmart.backend.notification.OrderNotifications notifications) {
         this.orders = orders; this.payments = payments; this.users = users; this.stock = stock; this.em = em;
+        this.notifications = notifications;
         finalFailurePairs = Arrays.stream(pairs.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
         // Opt-in only after merchant confirms finality; never classify unknown/suspicious codes as final.
         if (finalFailurePairs.stream().anyMatch(s -> !s.matches("(09|10|11|12|13|24|51|65|75|79):02")))
@@ -107,7 +109,9 @@ public class PaymentService {
         } else {
             p.setReconciliationRequired(true); // Includes abandoned, suspicious and unverified finality.
         }
-        p.setUpdatedAt(now); payments.flush(); return "00";
+        p.setUpdatedAt(now); payments.flush();
+        if (n.success() || p.getPaymentStatus() == PaymentStatus.FAILED) notifications.payment(order, p);
+        return "00";
     }
 
     public Snapshot snapshot(Long orderId) {

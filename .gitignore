@@ -33,3 +33,14 @@ build/
 ### Local environment credentials ###
 .env
 .env.*
+
+# Private runtime settings, generated output and caches
+.run/
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+config/*.env
+*.dump
+*.backup

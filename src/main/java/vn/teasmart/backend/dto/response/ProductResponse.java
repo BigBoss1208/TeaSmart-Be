@@ -21,5 +21,7 @@ public record ProductResponse(
         Long regionId,
         String regionName,
         Long storeId,
-        String storeName) {
+        String storeName,
+        Long shopId,
+        String shopName) {
 }

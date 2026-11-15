@@ -12,6 +12,15 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ProfileException.class)
+    public ResponseEntity<ErrorResponse> handleProfile(ProfileException e) {
+        return ResponseEntity.status(e.status()).body(new ErrorResponse(e.code(),e.getMessage()));
+    }
+    @ExceptionHandler(GoogleAuthException.class)
+    public ResponseEntity<ErrorResponse> handleGoogleAuth(GoogleAuthException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(new ErrorResponse(exception.getCode(), exception.getMessage()));
+    }
     @ExceptionHandler(PaymentException.class)
     public ResponseEntity<ErrorResponse> handlePayment(PaymentException exception) {
         return ResponseEntity.status(exception.getStatus()).body(new ErrorResponse(exception.getCode(), exception.getMessage()));
@@ -119,6 +128,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("DUPLICATE_EMAIL", "Email already registered."));
     }
 
+    @ExceptionHandler(DuplicatePhoneException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicatePhone(DuplicatePhoneException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("DUPLICATE_PHONE", "Số điện thoại đã được đăng ký."));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         List<FieldErrorResponse> errors = exception.getBindingResult().getFieldErrors().stream()
@@ -129,7 +144,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException exception) {
+    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException exception,
+            jakarta.servlet.http.HttpServletRequest request) {
+        if ("/api/auth/google".equals(request.getRequestURI())) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("VALIDATION_ERROR", "Invalid Google login request."));
+        }
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse("INVALID_REQUEST", "Malformed JSON or unsupported request fields."));
     }

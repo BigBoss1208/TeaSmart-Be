@@ -1,6 +1,6 @@
 package vn.teasmart.backend.security;
 
-import java.util.Locale;
+import vn.teasmart.backend.util.LoginIdentifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,9 +18,17 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) {
-        var user = repository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
+    public UserDetails loadUserByUsername(String identifier) {
+        if (!LoginIdentifier.isValid(identifier)) {
+            throw new UsernameNotFoundException("Authentication failed.");
+        }
+        String normalized = LoginIdentifier.normalize(identifier);
+        var user = (LoginIdentifier.isEmail(normalized)
+                ? repository.findByEmail(normalized) : repository.findByPhone(normalized))
                 .orElseThrow(() -> new UsernameNotFoundException("Authentication failed."));
+        if (user.getPasswordHash() == null) {
+            throw new UsernameNotFoundException("Authentication failed.");
+        }
         boolean valid = "ACTIVE".equals(user.getStatus())
                 && ("CUSTOMER".equals(user.getRole()) || "ADMIN".equals(user.getRole()));
         return org.springframework.security.core.userdetails.User

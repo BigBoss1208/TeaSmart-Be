@@ -27,10 +27,17 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = true, length = 255)
     private String passwordHash;
 
-    @Column(name = "phone", nullable = true, length = 20)
+    @Column(name = "google_sub", nullable = true, unique = true, length = 255,
+            columnDefinition = "VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
+    private String googleSub;
+
+    @Column(name = "google_email", nullable = true, length = 255)
+    private String googleEmail;
+
+    @Column(name = "phone", nullable = true, unique = true, length = 20)
     private String phone;
 
     @Column(name = "role", nullable = false, length = 20)
@@ -83,8 +90,20 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
+    public String getGoogleEmail() { return googleEmail; }
+
+    public void setGoogleEmail(String googleEmail) { this.googleEmail = googleEmail; }
+
     public String getPhone() {
         return phone;
+    }
+
+    public String getGoogleSub() {
+        return googleSub;
+    }
+
+    public void setGoogleSub(String googleSub) {
+        this.googleSub = googleSub;
     }
 
     public void setPhone(String phone) {

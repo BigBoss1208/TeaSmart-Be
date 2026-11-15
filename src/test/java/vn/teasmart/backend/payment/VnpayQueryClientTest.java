@@ -34,7 +34,7 @@ class VnpayQueryClientTest {
         var r=client.parseResponse(signed(data()),snapshot);assertNotNull(r);assertTrue(r.success());assertEquals(new BigDecimal("100000.00"),r.amount());
     }
     @Test void querySuccessDoesNotImplyPaymentSuccess() {
-        var m=data();m.put("vnp_TransactionStatus","01");assertNull(client.parseResponse(signed(m),snapshot));
+        var m=data();m.put("vnp_TransactionStatus","01");var pending=client.parseResponse(signed(m),snapshot);assertNotNull(pending);assertFalse(pending.success());
         m=data();m.put("vnp_ResponseCode","91");assertNull(client.parseResponse(signed(m),snapshot));
     }
     @Test void invalidSignatureMerchantReferenceOrTransactionTypeIsRejected() {

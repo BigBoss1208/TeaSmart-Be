@@ -25,13 +25,14 @@ public class VnpayGateway {
     public static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("uuuuMMddHHmmss").withResolverStyle(ResolverStyle.STRICT);
     private static final Set<String> ALLOWED = Set.of("vnp_TmnCode", "vnp_Amount", "vnp_BankCode",
             "vnp_BankTranNo", "vnp_CardType", "vnp_PayDate", "vnp_OrderInfo", "vnp_TransactionNo",
-            "vnp_ResponseCode", "vnp_TransactionStatus", "vnp_TxnRef", "vnp_SecureHash", "vnp_CurrCode");
+            "vnp_ResponseCode", "vnp_TransactionStatus", "vnp_TxnRef", "vnp_SecureHash",
+            "vnp_SecureHashType", "vnp_CurrCode");
     private final VnpaySettings settings;
     public VnpayGateway(VnpaySettings settings) { this.settings = settings; }
 
     public String paymentUrl(Payment payment, String ip) {
         settings.requireConfigured();
-        if (ip == null || !ip.matches("[0-9a-fA-F:.]{2,45}")) throw PaymentException.invalid();
+        String gatewayIp = normalizeIp(ip);
         Map<String, String> values = new TreeMap<>();
         values.put("vnp_Version", "2.1.0"); values.put("vnp_Command", "pay");
         values.put("vnp_TmnCode", settings.tmnCode()); values.put("vnp_CurrCode", "VND");
@@ -39,11 +40,33 @@ public class VnpayGateway {
         values.put("vnp_TxnRef", payment.getMerchantReference());
         values.put("vnp_OrderInfo", "Thanh toan TeaSmart " + payment.getMerchantReference());
         values.put("vnp_OrderType", "other"); values.put("vnp_Locale", "vn");
-        values.put("vnp_IpAddr", ip); values.put("vnp_ReturnUrl", settings.returnUrl());
+        values.put("vnp_IpAddr", gatewayIp); values.put("vnp_ReturnUrl", settings.returnUrl());
         values.put("vnp_CreateDate", DATE.format(payment.getCreatedAt()));
         values.put("vnp_ExpireDate", DATE.format(payment.getExpiresAt()));
         String data = canonical(values);
         return VnpaySettings.PAYMENT_URL + "?" + data + "&vnp_SecureHash=" + sign(data);
+    }
+
+    /** Literal addresses only: never resolve a hostname or trust arbitrary forwarded headers. */
+    private static String normalizeIp(String ip) {
+        if (ip == null || ip.length() > 45) throw PaymentException.invalid();
+        if (ip.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}")) {
+            String[] parts = ip.split("\\.");
+            for (int i = 0; i < parts.length; i++) {
+                int octet = Integer.parseInt(parts[i]);
+                if (octet > 255) throw PaymentException.invalid();
+                parts[i] = Integer.toString(octet);
+            }
+            return String.join(".", parts);
+        }
+        if (!ip.contains(":") || !ip.matches("[0-9a-fA-F:.]{2,45}")) throw PaymentException.invalid();
+        try {
+            // The character check + colon ensure this is a literal IPv6 address, not a DNS lookup.
+            var address = java.net.InetAddress.getByName(ip);
+            return address.isLoopbackAddress() ? "127.0.0.1" : address.getHostAddress();
+        } catch (java.net.UnknownHostException invalid) {
+            throw PaymentException.invalid();
+        }
     }
 
     public Notification verifyIpn(MultiValueMap<String, String> input) {
@@ -55,10 +78,16 @@ public class VnpayGateway {
             values.put(key, entries.get(0));
         });
         String signature = values.remove("vnp_SecureHash");
-        if (!validSignature(canonical(values), signature)) throw new InvalidNotification("97");
-        if (!settings.tmnCode().equals(values.get("vnp_TmnCode"))) throw new InvalidNotification("99");
-        if (values.containsKey("vnp_CurrCode") && !"VND".equals(values.get("vnp_CurrCode"))) throw new InvalidNotification("04");
+        values.remove("vnp_SecureHashType");
+        if (!validSignature(canonical(values), signature)) throw new InvalidNotification("97", "SIGNATURE_REJECTED");
+        if (!settings.tmnCode().equals(values.get("vnp_TmnCode"))) throw new InvalidNotification("99", "MERCHANT_MISMATCH");
+        if (values.containsKey("vnp_CurrCode") && !"VND".equals(values.get("vnp_CurrCode"))) throw new InvalidNotification("04", "CURRENCY_MISMATCH");
         return notification(values);
+    }
+
+    public Notification verifyReturn(MultiValueMap<String, String> input) {
+        // Browser return values are accepted only after the same signature and merchant checks as IPN.
+        return verifyIpn(input);
     }
 
     public Notification notification(Map<String, String> values) {
@@ -111,7 +140,14 @@ public class VnpayGateway {
     }
     public static class InvalidNotification extends RuntimeException {
         private final String code;
-        public InvalidNotification(String code) { super("Invalid gateway notification."); this.code = code; }
+        private final String verificationOutcome;
+        public InvalidNotification(String code) { this(code, "MALFORMED_NOTIFICATION"); }
+        private InvalidNotification(String code, String verificationOutcome) {
+            super("Invalid gateway notification.");
+            this.code = code;
+            this.verificationOutcome = verificationOutcome;
+        }
+        public String verificationOutcome() { return verificationOutcome; }
         public String code() { return code; }
     }
 }

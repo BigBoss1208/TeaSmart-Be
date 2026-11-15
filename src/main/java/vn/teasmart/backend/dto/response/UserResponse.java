@@ -9,5 +9,8 @@ public record UserResponse(
         String phone,
         String avatarUrl,
         String role,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt, boolean sellerEnabled, java.util.List<String> authorities) {
+    public UserResponse(Long userId, String fullName, String email, String phone, String avatarUrl, String role, LocalDateTime createdAt) {
+        this(userId, fullName, email, phone, avatarUrl, role, createdAt, false, java.util.List.of(role));
+    }
 }

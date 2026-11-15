@@ -31,12 +31,14 @@ public class AdminOrderService {
     private final OrderRepository orders;
     private final OrderItemRepository orderItems;
     private final PaymentRepository payments;
+    private final vn.teasmart.backend.notification.OrderNotifications notifications;
 
     public AdminOrderService(OrderRepository orders, OrderItemRepository orderItems,
-            PaymentRepository payments) {
+            PaymentRepository payments, vn.teasmart.backend.notification.OrderNotifications notifications) {
         this.orders = orders;
         this.orderItems = orderItems;
         this.payments = payments;
+        this.notifications = notifications;
     }
 
     public PageResponse<AdminOrderSummaryResponse> getAll(String orderStatus, Pageable pageable) {
@@ -90,6 +92,7 @@ public class AdminOrderService {
         order.setOrderStatus(next);
         order.setUpdatedAt(PaymentTime.now());
         orders.flush();
+        notifications.statusChanged(order, payment);
         return toResponse(order, payment);
     }
 

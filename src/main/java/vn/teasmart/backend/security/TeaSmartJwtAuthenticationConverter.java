@@ -28,7 +28,7 @@ public class TeaSmartJwtAuthenticationConverter implements Converter<Jwt, Abstra
             }
             var user = userService.requireActiveUser(Long.valueOf(subject));
             return new JwtAuthenticationToken(jwt,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())), subject);
+                    userService.authorities(user).stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList(), subject);
         } catch (NumberFormatException | AuthenticationException exception) {
             throw new InvalidBearerTokenException("Authentication failed.");
         }

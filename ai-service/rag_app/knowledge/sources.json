@@ -1,0 +1,42 @@
+[
+  {
+    "id": "tn-regions",
+    "title": "Vùng chè Thái Nguyên: Tân Cương, La Bằng, Trại Cài",
+    "url": "https://chethainguyen.gov.vn/home/vung-che",
+    "publisher": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "accessedAt": "2026-10-17",
+    "text": "Tân Cương được giới thiệu với hương cốm, chát dịu và hậu ngọt. La Bằng nằm gần sườn đông Tam Đảo, suối Kẹm, được mô tả hương thanh và vị dịu. Trại Cài là vùng chè lâu đời ở Đồng Hỷ, có nước chè đậm và hậu vị chắc. Đây là mô tả vùng nguyên liệu, không phải cam kết mọi sản phẩm có cùng hương vị. Cần đối chiếu thông tin từng sản phẩm."
+  },
+  {
+    "id": "tn-culture",
+    "title": "Thu hái, chế biến và văn hóa trà Thái Nguyên",
+    "url": "https://en.thainguyen.gov.vn/thai-nguyen-tourist/the-flavor-of-tea-through-life-270941",
+    "publisher": "Cổng thông tin tỉnh Thái Nguyên",
+    "accessedAt": "2026-10-17",
+    "text": "Bài giới thiệu phân biệt trà đinh từ búp, nõn tôm từ búp cùng lá non và móc câu từ mức thu hái nhiều lá hơn. Đây là cách mô tả trong bài, không phải tiêu chuẩn phân hạng của mọi nhà sản xuất.\n\nMột cơ sở ở La Bằng được bài viết mô tả có các bước làm héo, diệt men và sấy, xen kẽ ổn định độ ẩm. Cách làm cụ thể phụ thuộc cơ sở, không áp dụng một lịch sao cố định cho tất cả chè. Văn hóa thưởng trà coi trọng nước, trà, cách pha và ấm."
+  },
+  {
+    "id": "brewing",
+    "title": "Pha trà xanh và bảo quản: hướng dẫn tham khảo của ITO EN",
+    "url": "https://www.itoen-global.com/allabout_greentea/how_to_prepare/",
+    "publisher": "ITO EN — nhà sản xuất trà",
+    "accessedAt": "2026-10-17",
+    "text": "Hướng dẫn ITO EN cho trà xanh Nhật phân biệt lượng lá, lượng nước, nhiệt độ và thời gian hãm theo loại trà. Không có một công thức nhiệt độ chung phù hợp mọi trà xanh. Khi pha chè bị đắng hoặc chát quá, cần xem lại lượng lá, nhiệt độ nước và thời gian hãm theo hướng dẫn của sản phẩm.\n\nĐể bảo quản trà khô, ITO EN khuyến nghị hạn chế tiếp xúc với ẩm và oxy, dùng dụng cụ đựng trà phù hợp. Nguồn này là hướng dẫn trà Nhật, không phải tiêu chuẩn riêng chè Thái Nguyên; ưu tiên hướng dẫn trên bao bì từng sản phẩm."
+  },
+  {
+    "id": "tea-general",
+    "title": "Cây chè và giá trị văn hóa — FAO",
+    "url": "https://www.fao.org/markets-and-trade/commodities-overview/beverages/tea/2/en",
+    "publisher": "Food and Agriculture Organization of the United Nations",
+    "accessedAt": "2026-10-17",
+    "text": "FAO giới thiệu trà gắn với cây Camellia sinensis và là đồ uống có vai trò kinh tế, văn hóa ở nhiều quốc gia. Sản xuất và chế biến chè tạo sinh kế cho nhiều gia đình. Thông tin tổng quan này không chứng minh lợi ích điều trị bệnh của một sản phẩm; không dùng trà thay tư vấn y tế."
+  },
+  {
+    "id": "plant-health",
+    "title": "Theo dõi bệnh phồng lá chè — giới hạn kiến thức hiện có",
+    "url": "https://trongtrotbaovethucvat.thainguyen.gov.vn/",
+    "publisher": "Chi cục Trồng trọt và Bảo vệ thực vật Thái Nguyên",
+    "accessedAt": "2026-10-17",
+    "text": "Cổng Chi cục có thông tin tăng cường kiểm tra bệnh phồng lá trên cây chè. Nguồn tổng quan hiện có chưa đủ để xác định bệnh từ ảnh hoặc chỉ định thuốc, liều lượng và lịch phun. Khi nghi ngờ sâu bệnh cần thu thập triệu chứng và tham khảo cán bộ bảo vệ thực vật địa phương. Chatbot không phải mô hình chẩn đoán ảnh lá chè."
+  }
+]

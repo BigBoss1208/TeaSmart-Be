@@ -21,7 +21,8 @@ public record AdminProductRequest(
         @Min(1) @Max(5) Integer astringencyLevel,
         @Min(1) @Max(5) Integer aromaLevel,
         @Min(1) @Max(5) Integer aftertasteLevel,
-        @NotBlank @Pattern(regexp = "ACTIVE|INACTIVE") String status) {
+        @NotBlank @Pattern(regexp = "ACTIVE|INACTIVE") String status,
+        @Min(0) @Max(4294967295L) Long expectedStockQuantity) {
     public AdminProductRequest {
         name = name == null ? null : name.trim();
     }

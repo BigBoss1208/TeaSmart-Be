@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
@@ -25,6 +26,14 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long orderId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "checkout_session_id", referencedColumnName = "checkout_session_id",
+            unique = true, columnDefinition = "BIGINT UNSIGNED")
+    private CheckoutSession checkoutSession;
+
+    public CheckoutSession getCheckoutSession() { return checkoutSession; }
+    public void setCheckoutSession(CheckoutSession value) { checkoutSession = value; }
 
     @Column(name = "order_code", nullable = false, unique = true, length = 50)
     private String orderCode;

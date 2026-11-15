@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import vn.teasmart.backend.dto.request.PlaceOrderRequest;
+import vn.teasmart.backend.dto.request.ShippingInfoUpdateRequest;
 import vn.teasmart.backend.dto.response.OrderResponse;
 import vn.teasmart.backend.dto.response.OrderSummaryResponse;
 import vn.teasmart.backend.dto.response.PageResponse;
@@ -42,6 +43,26 @@ public class OrderController {
         return org.springframework.http.ResponseEntity.status(result.replayed() ? 200 : 201).body(result);
     }
 
+    @PostMapping({"/buy-now", "/buy-now/vnpay"})
+    public org.springframework.http.ResponseEntity<vn.teasmart.backend.dto.response.PaymentCheckoutResponse> buyNow(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody vn.teasmart.backend.dto.request.BuyNowRequest request,
+            @RequestHeader("Idempotency-Key") String key, jakarta.servlet.http.HttpServletRequest http) {
+        var method = http.getServletPath().endsWith("/vnpay")
+                ? vn.teasmart.backend.enums.PaymentMethod.ONLINE : vn.teasmart.backend.enums.PaymentMethod.COD;
+        var result = service.buyNow(Long.valueOf(jwt.getSubject()), request, key, method, http.getRemoteAddr());
+        return org.springframework.http.ResponseEntity.status(result.replayed() ? 200 : 201).body(result);
+    }
+
+    @PostMapping({"/selected", "/selected/vnpay"})
+    public org.springframework.http.ResponseEntity<vn.teasmart.backend.dto.response.PaymentCheckoutResponse> selected(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody vn.teasmart.backend.dto.request.SelectedCheckoutRequest request,
+            @RequestHeader("Idempotency-Key") String key, jakarta.servlet.http.HttpServletRequest http) {
+        var method=http.getServletPath().endsWith("/vnpay")?vn.teasmart.backend.enums.PaymentMethod.ONLINE:vn.teasmart.backend.enums.PaymentMethod.COD;
+        var result=service.selected(Long.valueOf(jwt.getSubject()),request,key,method,http.getRemoteAddr());
+        return org.springframework.http.ResponseEntity.status(result.replayed()?200:201).body(result);
+    }
+
     @GetMapping
     public PageResponse<OrderSummaryResponse> listOrders(@AuthenticationPrincipal Jwt jwt,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "12") int size) {
@@ -60,5 +81,11 @@ public class OrderController {
     @PatchMapping("/{orderId}/cancel")
     public OrderResponse cancelOrder(@AuthenticationPrincipal Jwt jwt, @PathVariable @Positive Long orderId) {
         return service.cancelOrder(Long.valueOf(jwt.getSubject()), orderId);
+    }
+
+    @PatchMapping("/{orderId}/shipping-info")
+    public OrderResponse updateShippingInfo(@AuthenticationPrincipal Jwt jwt, @PathVariable @Positive Long orderId,
+            @Valid @RequestBody ShippingInfoUpdateRequest request) {
+        return service.updateShippingInfo(Long.valueOf(jwt.getSubject()), orderId, request);
     }
 }

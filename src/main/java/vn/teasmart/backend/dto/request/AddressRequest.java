@@ -15,7 +15,7 @@ public record AddressRequest(
         @JsonDeserialize(using = StrictStringDeserializer.class)
         @NotBlank @Size(max = 20) @Pattern(regexp = "0[0-9]{9}") String phone,
         @JsonDeserialize(using = StrictStringDeserializer.class) @NotBlank @Size(max = 100) String province,
-        @JsonDeserialize(using = StrictStringDeserializer.class) @NotBlank @Size(max = 100) String district,
+        @JsonDeserialize(using = StrictStringDeserializer.class) @Size(max = 100) String district,
         @JsonDeserialize(using = StrictStringDeserializer.class) @NotBlank @Size(max = 100) String ward,
         @JsonDeserialize(using = StrictStringDeserializer.class) @NotBlank @Size(max = 255) String detailAddress) {
     public AddressRequest {
@@ -23,6 +23,9 @@ public record AddressRequest(
         phone = trim(phone);
         province = trim(province);
         district = trim(district);
+        if (district == null) {
+            district = "";
+        }
         ward = trim(ward);
         detailAddress = trim(detailAddress);
     }
