@@ -150,6 +150,9 @@ class PaymentMysqlTest {
                 s.execute(Files.readString(Path.of("database/migrations/1111_vnpay_checkout_audit.sql")));
                 TABLES.add("vnpay_checkout_audit");
             }
+            for (String sql : Files.readString(Path.of("database/migrations/1112_checkout_session_quarantine.sql")).replaceAll("(?m)^--.*$", "").split(";"))
+                if (!sql.isBlank()) s.execute(sql);
+            TABLES.add("checkout_session_quarantine"); TABLES.add("checkout_quarantine_callback");
             s.executeUpdate("INSERT INTO categories(name,slug,status,created_at,updated_at) VALUES('Test','test','ACTIVE',NOW(),NOW())");
             s.executeUpdate("INSERT INTO tea_regions(name,status,created_at,updated_at) VALUES('Test','ACTIVE',NOW(),NOW())");
             s.executeUpdate("INSERT INTO stores(name,status,created_at,updated_at) VALUES('Test','ACTIVE',NOW(),NOW())");
@@ -175,6 +178,8 @@ class PaymentMysqlTest {
         }
         String server = System.getenv("PAYMENT_TEST_SERVER_URL");
         try (Connection c = DriverManager.getConnection(server + DB, USER, PASSWORD); Statement s = c.createStatement()) {
+            s.executeUpdate("DELETE FROM checkout_quarantine_callback");
+            s.executeUpdate("DELETE FROM checkout_session_quarantine");
             s.executeUpdate("DELETE FROM payment_attempts");
             s.executeUpdate("DELETE FROM checkout_session_items");
             s.executeUpdate("DELETE FROM payments");
@@ -237,7 +242,7 @@ class PaymentMysqlTest {
     private long stock() { return jdbc.queryForObject("SELECT stock_quantity FROM products WHERE product_id=?", Long.class, productId); }
 
     @Test @Order(1) void migrationPreservesLegacyAndCreatesExactColumns() throws Exception {
-        assertEquals(23, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()", Integer.class));
+        assertEquals(25, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()", Integer.class));
         assertEquals(34, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name IN ('orders','payments')", Integer.class)); // 22 baseline + 11 metadata columns + checkout_session_id
         assertNull(jdbc.queryForObject("SELECT stock_released_at FROM orders WHERE order_id=1", Object.class));
         assertEquals("CANCELLED", jdbc.queryForObject("SELECT order_status FROM orders WHERE order_id=1", String.class));
@@ -862,6 +867,58 @@ class PaymentMysqlTest {
                 assertEquals("RELEASED", jdbc.queryForObject("SELECT reservation_status FROM checkout_sessions WHERE checkout_session_id=?", String.class, freshSessionId));
                 assertEquals(before, stock());
             }
+        }
+    }
+
+    @Test @Order(23) void administrativeQuarantineKeepsUnknownAndPreventsLateFulfillment() throws Exception {
+        long actor = jdbc.queryForObject("SELECT MIN(user_id) FROM users WHERE role='ADMIN'", Long.class);
+        for (String method : List.of("COD", "VNPAY")) {
+            productId = seedProduct(100000, 1, 100);
+            Result old = createBuyNowSession(1, UUID.randomUUID().toString());
+            long id = old.json.path("checkoutSessionId").asLong();
+            String ref = startSessionAttempt(id, UUID.randomUUID().toString()).json.path("attemptReference").asText();
+            assertEquals(0, stock());
+            var cutoff = PaymentTime.now().minusDays(1);
+            assertThrows(Exception.class, () -> checkoutSessions.quarantineHistorical(actor, customerId, id, cutoff, "Synthetic acceptance"));
+            jdbc.update("UPDATE checkout_sessions SET status='RECONCILIATION_REQUIRED',created_at=DATE_SUB(NOW(),INTERVAL 3 DAY),expires_at=DATE_SUB(NOW(),INTERVAL 2 DAY),reservation_expires_at=DATE_SUB(NOW(),INTERVAL 2 DAY) WHERE checkout_session_id=?", id);
+            jdbc.update("UPDATE payment_attempts SET status='UNKNOWN',reconciliation_required=TRUE,expires_at=DATE_SUB(NOW(),INTERVAL 2 DAY) WHERE checkout_session_id=?", id);
+            assertThrows(Exception.class, () -> checkoutSessions.quarantineHistorical(customerId, customerId, id, cutoff, "Not admin"));
+            assertThrows(Exception.class, () -> checkoutSessions.quarantineHistorical(actor, actor, id, cutoff, "Wrong owner"));
+            assertEquals(409, createBuyNowSession(1, UUID.randomUUID().toString()).status);
+            var pool = Executors.newFixedThreadPool(2);
+            try {
+                var jobs = new ArrayList<Future<?>>();
+                for (int n=0;n<2;n++) jobs.add(pool.submit(() -> checkoutSessions.quarantineHistorical(actor, customerId, id, cutoff, "Synthetic acceptance")));
+                for (var job:jobs) job.get();
+            } finally { pool.shutdownNow(); }
+            assertEquals(1, stock());
+            assertEquals("UNKNOWN", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?",String.class,ref));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM checkout_session_quarantine WHERE checkout_session_id=?",Integer.class,id));
+            assertEquals("ADMIN_QUARANTINED", checkoutSessions.get(customerId,id).status().name());
+            assertEquals("RELEASED", checkoutSessions.get(customerId,id).reservationStatus().name());
+            assertTrue(checkoutSessions.latestUnresolvedAttempt(customerId,id).isEmpty());
+            long oldAttemptId = jdbc.queryForObject("SELECT payment_attempt_id FROM payment_attempts WHERE merchant_reference=?",Long.class,ref);
+            checkoutSessions.markAttemptUnresolved(oldAttemptId);
+            assertEquals("ADMIN_QUARANTINED",checkoutSessions.get(customerId,id).status().name());
+
+            long fresh = createBuyNowSession(1,UUID.randomUUID().toString()).json.path("checkoutSessionId").asLong();
+            assertNotEquals(id,fresh);
+            if (method.equals("COD")) {
+                for(int n=0;n<2;n++) assertEquals(200,call("POST","/api/checkout-sessions/"+fresh+"/confirm-cod",customer,null,null).status);
+            } else {
+                String key=UUID.randomUUID().toString();
+                Result first=startSessionAttempt(fresh,key);
+                assertNotEquals(ref,first.json.path("attemptReference").asText());
+                assertEquals(first.json.path("attemptReference"),startSessionAttempt(fresh,key).json.path("attemptReference"));
+            }
+            String cents=VnpayGateway.amount(old.json.path("totalAmount").decimalValue());
+            for(int n=0;n<2;n++) assertEquals("00",sessionIpn(ref,"00","00",Long.toString(900000+id),cents).json.path("RspCode").asText());
+            assertEquals("UNKNOWN", jdbc.queryForObject("SELECT status FROM payment_attempts WHERE merchant_reference=?",String.class,ref));
+            assertEquals("ADMIN_QUARANTINED", checkoutSessions.get(customerId,id).status().name());
+            assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM checkout_quarantine_callback WHERE checkout_session_id=?",Integer.class,id));
+            assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM orders WHERE checkout_session_id=?",Integer.class,id));
+            assertEquals(0,stock());
+            assertThrows(Exception.class,()->checkoutSessions.finalizePaidSession(id));
         }
     }
 }

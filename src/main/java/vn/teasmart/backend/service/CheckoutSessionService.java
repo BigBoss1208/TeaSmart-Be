@@ -37,6 +37,8 @@ import vn.teasmart.backend.notification.OrderNotifications;
 public class CheckoutSessionService {
     @org.springframework.beans.factory.annotation.Autowired(required=false)
     private vn.teasmart.backend.seller.CheckoutShopScope shopScope;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate quarantineJdbc;
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
     private static final long MAX_STOCK = 4294967295L;
@@ -70,6 +72,39 @@ public class CheckoutSessionService {
         finalFailurePairs = Arrays.stream(pairs.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
         if (finalFailurePairs.stream().anyMatch(s -> !s.matches("(09|10|11|12|13|24|51|65|75|79):02")))
             throw new IllegalArgumentException("Invalid final failure policy.");
+    }
+
+    /** Administrative isolation is not a gateway failure or a payment settlement. */
+    @Transactional
+    public CheckoutSessionResponse quarantineHistorical(Long adminId, Long ownerId, Long sessionId,
+            LocalDateTime cutoff, String reason) {
+        User actor = users.findById(adminId).orElseThrow(() -> new BadCredentialsException("Authentication failed."));
+        if (!"ADMIN".equals(actor.getRole()) || !"ACTIVE".equals(actor.getStatus()))
+            throw new BadCredentialsException("Authentication failed.");
+        if (ownerId == null || sessionId == null || cutoff == null || cutoff.isAfter(PaymentTime.now())
+                || reason == null || reason.isBlank() || reason.length() > 500) throw PaymentException.invalid();
+        users.findLockedByUserId(ownerId).orElseThrow(() -> PaymentException.invalid());
+        CheckoutSession session = sessions.findLockedByCheckoutSessionId(sessionId).orElseThrow(() -> PaymentException.invalid());
+        if (!session.getUser().getUserId().equals(ownerId)) throw PaymentException.conflict("QUARANTINE_OWNER_MISMATCH");
+        if (session.getStatus() == CheckoutSessionStatus.ADMIN_QUARANTINED) return view(session);
+        var rows = attempts.findByCheckoutSession_CheckoutSessionIdOrderByAttemptNumberAsc(sessionId);
+        if (session.getStatus() != CheckoutSessionStatus.RECONCILIATION_REQUIRED
+                || session.getReservationStatus() != ReservationStatus.HELD
+                || session.getCreatedAt().isAfter(cutoff) || !session.getExpiresAt().isBefore(cutoff)
+                || orders.findByCheckoutSession_CheckoutSessionId(sessionId).isPresent() || rows.isEmpty()
+                || rows.stream().anyMatch(a -> a.getStatus() != PaymentAttemptStatus.UNKNOWN
+                    || a.getPaidAt() != null || (a.getTransactionNo() != null && !"0".equals(a.getTransactionNo()))
+                    || a.getExpiresAt() == null || !a.getExpiresAt().isBefore(cutoff)))
+            throw PaymentException.conflict("QUARANTINE_NOT_ELIGIBLE");
+        // Mandatory durable audit: insert failure rolls back the entire release.
+        quarantineJdbc.update("INSERT INTO checkout_session_quarantine (checkout_session_id,user_id,admin_user_id,reason,cutoff_at,previous_status,previous_reservation_status) VALUES (?,?,?,?,?,?,?)",
+                sessionId, ownerId, adminId, reason, cutoff, session.getStatus().name(), session.getReservationStatus().name());
+        releaseReservation(session);
+        session.setReservationStatus(ReservationStatus.RELEASED);
+        session.setStatus(CheckoutSessionStatus.ADMIN_QUARANTINED);
+        session.setUpdatedAt(PaymentTime.now());
+        em.flush();
+        return view(session);
     }
 
     @Transactional
@@ -292,7 +327,8 @@ public class CheckoutSessionService {
     @Transactional(readOnly = true)
     public AttemptSnapshot snapshot(Long attemptId) {
         PaymentAttempt attempt = attempts.findById(attemptId).orElseThrow(() -> new ResourceNotFoundException("Payment attempt not found."));
-        if (attempt.getCheckoutSession() == null || attempt.getStatus() == PaymentAttemptStatus.SUCCEEDED
+        if (attempt.getCheckoutSession() == null || attempt.getCheckoutSession().getStatus() == CheckoutSessionStatus.ADMIN_QUARANTINED
+                || attempt.getStatus() == PaymentAttemptStatus.SUCCEEDED
                 || attempt.getStatus() == PaymentAttemptStatus.FAILED_FINAL)
             throw PaymentException.conflict("PAYMENT_ATTEMPT_NOT_RECONCILABLE");
         return new AttemptSnapshot(attempt.getPaymentAttemptId(), attempt.getCheckoutSession().getCheckoutSessionId(),
@@ -306,6 +342,7 @@ public class CheckoutSessionService {
         if (attempt.getCheckoutSession() == null) return;
         CheckoutSession session = sessions.findLockedByCheckoutSessionId(attempt.getCheckoutSession().getCheckoutSessionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Checkout session not found."));
+        if (session.getStatus() == CheckoutSessionStatus.ADMIN_QUARANTINED) return;
         if (attempt.getStatus() == PaymentAttemptStatus.PENDING || attempt.getStatus() == PaymentAttemptStatus.UNKNOWN) {
             LocalDateTime now = PaymentTime.now();
             attempt.setStatus(PaymentAttemptStatus.UNKNOWN);
@@ -331,6 +368,13 @@ public class CheckoutSessionService {
                 || attempt.getAmount().compareTo(notification.amount()) != 0
                 || attempt.getAmount().compareTo(session.getTotalAmount()) != 0) return GatewayAcceptance.matched("04", null);
 
+        if (session.getStatus() == CheckoutSessionStatus.ADMIN_QUARANTINED) {
+            // Keep UNKNOWN and its original evidence; late authenticated results are audit-only.
+            quarantineJdbc.update("INSERT INTO checkout_quarantine_callback (checkout_session_id,payment_attempt_id,response_code,transaction_status,transaction_no,paid_at) VALUES (?,?,?,?,?,?)",
+                    sessionId, attempt.getPaymentAttemptId(), notification.responseCode(), notification.transactionStatus(),
+                    notification.transactionNo(), notification.paidAt());
+            return GatewayAcceptance.matched("00", null);
+        }
         LocalDateTime now = PaymentTime.now();
         if (notification.success()) {
             if (notification.paidAt() == null || notification.paidAt().isBefore(attempt.getCreatedAt()))
@@ -498,6 +542,7 @@ public class CheckoutSessionService {
     public Optional<Long> latestUnresolvedAttempt(Long userId, Long sessionId) {
         CheckoutSession session = sessions.findByCheckoutSessionIdAndUser_UserId(sessionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Checkout session not found."));
+        if (session.getStatus() == CheckoutSessionStatus.ADMIN_QUARANTINED) return Optional.empty();
         return attempts.findByCheckoutSession_CheckoutSessionIdOrderByAttemptNumberAsc(session.getCheckoutSessionId()).stream()
                 .filter(a -> a.getStatus() == PaymentAttemptStatus.PENDING || a.getStatus() == PaymentAttemptStatus.UNKNOWN)
                 .map(PaymentAttempt::getPaymentAttemptId).reduce((first, second) -> second);
