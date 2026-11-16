@@ -42,6 +42,9 @@ public final class TeaIntentParser {
             if(c.length()>categoryLength&&containsName(text,c)) {category=p.getCategory().getCategoryId();categoryLength=c.length();}
             if(r.length()>regionLength&&containsName(text,r)) {region=p.getRegion().getRegionId();regionLength=r.length();}
         }
+        var topic=TeaCatalogTopic.resolve(message,catalog);
+        if(topic.regionId()!=null)region=topic.regionId();
+        if(topic.line()!=null || topic.regionId()!=null)category=null;
         Integer strength=null,astringency=null,aroma=null,aftertaste=null;
         if(text.contains("dam vi")||text.contains("dam da")||text.contains("vi dam")||text.contains("che dam"))strength=4;
         if(text.contains("nhe vi")||text.contains("vi nhe")||text.contains("khong dam")||text.matches(".*khong (thich |muon )?dam vi.*"))strength=2;
@@ -56,7 +59,7 @@ public final class TeaIntentParser {
         if(text.contains("chua benh")||text.contains("dieu tri"))notices.add("Trợ lý không tư vấn điều trị bệnh hoặc cam kết tác dụng sức khỏe.");
         var result=new TeaPreferenceRequest(choose(explicit.categoryId(),category),choose(explicit.regionId(),region),
                 choose(explicit.minPrice(),min),choose(explicit.maxPrice(),max),choose(explicit.strength(),strength),
-                choose(explicit.astringency(),astringency),choose(explicit.aroma(),aroma),choose(explicit.aftertaste(),aftertaste),choose(explicit.purpose(),purpose));
+                choose(explicit.astringency(),astringency),choose(explicit.aroma(),aroma),choose(explicit.aftertaste(),aftertaste),choose(explicit.purpose(),purpose),choose(explicit.teaLine(),topic.line()));
         notices.add("Ngân sách tính theo một gói sản phẩm. Mức vị 1–5 dùng để xếp hạng tương đối, không bảo đảm cảm nhận thực tế.");
         return new Parsed(result,List.copyOf(notices));
     }

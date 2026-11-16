@@ -16,6 +16,7 @@ public final class TeaRecommendationEngine {
         List<TeaRecommendationResponse.Item> items=new ArrayList<>();
         for(Product p:catalog) {
             if(seed!=null&&p.getProductId().equals(seed.getProductId())||p.getStockQuantity()<=0)continue;
+            if(!TeaCatalogTopic.matches(p,q.teaLine()))continue;
             if(q.categoryId()!=null&&!q.categoryId().equals(p.getCategory().getCategoryId()))continue;
             if(q.regionId()!=null&&!q.regionId().equals(p.getRegion().getRegionId()))continue;
             if(q.minPrice()!=null&&p.getPrice().compareTo(q.minPrice())<0||q.maxPrice()!=null&&p.getPrice().compareTo(q.maxPrice())>0)continue;

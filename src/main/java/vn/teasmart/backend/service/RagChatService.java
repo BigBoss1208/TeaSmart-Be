@@ -46,7 +46,7 @@ public class RagChatService  {
         // Business facts never pass through an LLM: cards and figures originate in server-owned SQL.
         if(!snapshot.kind().equals("KNOWLEDGE")) {
             String reply=switch(snapshot.kind()) {
-                case "PRODUCT_SELECTION","CUSTOMER_SUPPORT","CONSULTATION","OUT_OF_SCOPE","GREETING","CLARIFICATION","PRODUCT_DETAIL"->advice.reply();
+                case "LINE_PRODUCTS","PRODUCT_SELECTION","CUSTOMER_SUPPORT","CONSULTATION","OUT_OF_SCOPE","GREETING","CLARIFICATION","PRODUCT_DETAIL"->advice.reply();
                 case "BESTSELLERS"->snapshot.facts().isEmpty()?"Dạ, hiện TeaSmart chưa có đủ dữ liệu mua hàng để xác định chính xác loại chè bán chạy nhất. Mình có thể giúp bạn lựa chọn theo ngân sách hoặc khẩu vị nhé!":"Dạ, bạn muốn tham khảo những loại chè được khách hàng lựa chọn nhiều tại TeaSmart phải không ạ? 🍃 Đây là các sản phẩm bán chạy dựa trên những đơn hàng đã hoàn tất và thanh toán hợp lệ của cửa hàng.";
                 case "REVIEWS"->snapshot.facts().isEmpty()?"Chưa có đánh giá APPROVED để xếp hạng.":"Xếp theo điểm trung bình từ đánh giá APPROVED; kèm số lượt đánh giá, không dùng đánh giá bị ẩn.";
                 default->snapshot.facts().isEmpty()?emptyProductReply(snapshot):productReply(snapshot);

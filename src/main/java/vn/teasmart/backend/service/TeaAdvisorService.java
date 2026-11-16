@@ -58,10 +58,11 @@ public class TeaAdvisorService {
     }
     private TeaPreferenceRequest merge(TeaPreferenceRequest current,TeaPreferenceRequest previous) {
         if(previous==null)return current;
+        if(current.teaLine()!=null&&!Objects.equals(current.teaLine(),previous.teaLine()) || current.regionId()!=null&&!Objects.equals(current.regionId(),previous.regionId()))return current;
         if(current.purpose()!=null&&!current.purpose().equals(previous.purpose()))return current;
         return new TeaPreferenceRequest(or(current.categoryId(),previous.categoryId()),or(current.regionId(),previous.regionId()),
                 current.minPrice()!=null||current.maxPrice()!=null?current.minPrice():previous.minPrice(),current.minPrice()!=null||current.maxPrice()!=null?current.maxPrice():previous.maxPrice(),or(current.strength(),previous.strength()),
-                or(current.astringency(),previous.astringency()),or(current.aroma(),previous.aroma()),or(current.aftertaste(),previous.aftertaste()),or(current.purpose(),previous.purpose()));
+                or(current.astringency(),previous.astringency()),or(current.aroma(),previous.aroma()),or(current.aftertaste(),previous.aftertaste()),or(current.purpose(),previous.purpose()),or(current.teaLine(),previous.teaLine()));
     }
     private <T> T or(T a,T b) {return a==null?b:a;}
     private void validate(TeaPreferenceRequest q,List<Product> products) {

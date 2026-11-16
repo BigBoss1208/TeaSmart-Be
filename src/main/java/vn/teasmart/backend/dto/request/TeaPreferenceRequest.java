@@ -14,7 +14,11 @@ public record TeaPreferenceRequest(
         @Min(1) @Max(5) Integer astringency,
         @Min(1) @Max(5) Integer aroma,
         @Min(1) @Max(5) Integer aftertaste,
-        @Pattern(regexp="DAILY|GIFT") String purpose) {
+        @Pattern(regexp="DAILY|GIFT") String purpose,
+        @Size(max=100) String teaLine) {
+    public TeaPreferenceRequest(Long categoryId, Long regionId, BigDecimal minPrice, BigDecimal maxPrice, Integer strength, Integer astringency, Integer aroma, Integer aftertaste, String purpose) {
+        this(categoryId,regionId,minPrice,maxPrice,strength,astringency,aroma,aftertaste,purpose,null);
+    }
     @JsonAnySetter public void rejectUnknownField(String field,Object value) {
         throw new IllegalArgumentException("Unsupported preference field.");
     }

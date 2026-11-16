@@ -37,7 +37,7 @@ public class RagBusinessService  {
                 return direct("PRODUCT_DETAIL","Sản phẩm thứ hai là "+p.getName()+". Bạn có thể mở chi tiết bên dưới để xem thêm.",List.of(new BusinessProduct(p.getProductId(),p.getName(),p.getSlug(),p.getPrice(),p.getStockQuantity(),null,null,null)));
             }
             var pref=previous==null?TeaPreferenceRequest.empty():previous;
-            var eligible=visible.stream().filter(p->p.getStockQuantity()>0&&(!Integer.valueOf(1).equals(pref.astringency())||p.getAstringencyLevel()!=null&&p.getAstringencyLevel()>=1&&p.getAstringencyLevel()<=2)&&(pref.regionId()==null||pref.regionId().equals(p.getRegion().getRegionId()))&&(pref.categoryId()==null||pref.categoryId().equals(p.getCategory().getCategoryId()))&&(pref.minPrice()==null||p.getPrice().compareTo(pref.minPrice())>=0)&&(pref.maxPrice()==null||p.getPrice().compareTo(pref.maxPrice())<=0)).sorted(Comparator.comparing(vn.teasmart.backend.entity.Product::getPrice).thenComparing(vn.teasmart.backend.entity.Product::getProductId));
+            var eligible=visible.stream().filter(p->TeaCatalogTopic.matches(p,pref.teaLine())&&p.getStockQuantity()>0&&(!Integer.valueOf(1).equals(pref.astringency())||p.getAstringencyLevel()!=null&&p.getAstringencyLevel()>=1&&p.getAstringencyLevel()<=2)&&(pref.regionId()==null||pref.regionId().equals(p.getRegion().getRegionId()))&&(pref.categoryId()==null||pref.categoryId().equals(p.getCategory().getCategoryId()))&&(pref.minPrice()==null||p.getPrice().compareTo(pref.minPrice())>=0)&&(pref.maxPrice()==null||p.getPrice().compareTo(pref.maxPrice())<=0)).sorted(Comparator.comparing(vn.teasmart.backend.entity.Product::getPrice).thenComparing(vn.teasmart.backend.entity.Product::getProductId));
             var cap=prior.stream().map(vn.teasmart.backend.entity.Product::getPrice).min(java.math.BigDecimal::compareTo).orElse(null);
             var facts=eligible.filter(p->!text.contains("re hon")||cap==null||p.getPrice().compareTo(cap)<0).limit(4).map(p->new BusinessProduct(p.getProductId(),p.getName(),p.getSlug(),p.getPrice(),p.getStockQuantity(),null,null,null)).toList();
             return new Snapshot(new TeaAdviceResponse("RULE_BASED_CATALOG_V1",facts.isEmpty()?"Chưa có sản phẩm rẻ hơn đáp ứng tiêu chí cũ. Bạn muốn điều chỉnh ngân sách hoặc vùng chè không ạ?":"Đây là những sản phẩm có mức giá thấp nhất theo tiêu chí đang chọn.",pref,List.of(),new TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of())),"PRODUCT_SELECTION",facts);
@@ -58,6 +58,30 @@ public class RagBusinessService  {
         if(intent==ChatIntentClassifier.Intent.OUT_OF_SCOPE)return direct("OUT_OF_SCOPE","Xin lỗi, tôi là trợ lý tư vấn của TeaSmart, chuyên hỗ trợ chè Thái Nguyên và sản phẩm. Tôi chưa hỗ trợ câu hỏi ngoài phạm vi này. Bạn muốn tìm hiểu loại chè nào?",List.of());
         if(intent==ChatIntentClassifier.Intent.GREETING)return direct("GREETING","Xin chào! Bạn muốn tìm chè theo khẩu vị, ngân sách hay tìm hiểu sản phẩm đang xem?",List.of());
         if(intent==ChatIntentClassifier.Intent.UNKNOWN)return direct("CLARIFICATION","Bạn có thể nói rõ loại chè hoặc nhu cầu muốn tìm hiểu không?",List.of());
+        // Named tea lines are catalog questions unless an explicit knowledge task owns routing.
+        boolean comparison=text.matches("(?s).*(so sanh|khac.*nhau|khac.*the nao|khac.*gi).*");
+        if(comparison && request.productId()==null) {
+            var parts=TeaCatalogTopic.comparison(request.message(),catalog.findVisibleCatalog());
+            if(parts.size()>=2)return direct("PRODUCT_DETAIL","Mình đối chiếu theo mô tả danh mục TeaSmart nhé.\n"+String.join("\n",parts)+"\nĐây là thông tin từng dòng trong danh mục, không có nghĩa dòng nào luôn ngon hơn. Bạn muốn so sánh thêm theo ngân sách hay khẩu vị ạ?",List.of());
+        }
+        if(!comparison && !TeaCatalogTopic.knowledge(text) && !text.matches("(?s).*(san pham nay|che nay|loai nay|dang xem).*") && intent!=ChatIntentClassifier.Intent.BEST_SELLER) {
+            var visible=catalog.findVisibleCatalog();
+            var topic=TeaCatalogTopic.resolve(request.message(),visible);
+            boolean named=topic.line()!=null||topic.regionId()!=null;
+            boolean continuing=previous!=null&&(previous.teaLine()!=null||previous.regionId()!=null||previous.categoryId()!=null);
+            if(named||continuing) {
+                var lineAdvice=advisor.adviseChat(new TeaAdviceRequest(request.message(),request.preferences(),previous));
+                var pref=lineAdvice.preferences();var items=lineAdvice.recommendations().items();
+                String label=TeaCatalogTopic.label(pref,visible);
+                String intro=TeaCatalogTopic.introduction(pref,visible);
+                if(continuing&&!named)intro="Mình tiếp tục tìm "+label+" theo nhu cầu bạn vừa bổ sung nhé.";
+                else if(pref.maxPrice()!=null||pref.minPrice()!=null)intro=intro.split("(?<=[.!?]) +",2)[0];
+                String reply=intro+"\n\n"+(items.isEmpty()?"Hiện TeaSmart chưa có sản phẩm còn hàng phù hợp với "+label+" và các tiêu chí này. Mình có thể giúp bạn tìm lựa chọn khác.":"Nếu bạn đang tìm "+label+", TeaSmart có "+items.size()+" sản phẩm còn hàng phù hợp để bạn tham khảo nhé!");
+                reply+="\n"+(pref.purpose()==null?"Bạn muốn chọn chè uống hằng ngày hay làm quà tặng ạ?":"Bạn muốn mình chọn tiếp theo khẩu vị hay ngân sách nào ạ?");
+                var answer=new TeaAdviceResponse(lineAdvice.method(),reply,pref,lineAdvice.notices(),lineAdvice.recommendations());
+                return new Snapshot(answer,"LINE_PRODUCTS",items.stream().map(item->new BusinessProduct(item.product().productId(),item.product().name(),item.product().slug(),item.product().price(),item.stockQuantity(),null,null,null)).toList());
+            }
+        }
         boolean detail=Set.of(ChatIntentClassifier.Intent.PRODUCT_DETAIL,ChatIntentClassifier.Intent.PRODUCT_CONTEXT,ChatIntentClassifier.Intent.PRODUCT_PRICE,ChatIntentClassifier.Intent.PRODUCT_STOCK).contains(intent);
         if(detail && request.productId()!=null) {
             var product=catalog.findVisibleCatalog().stream().filter(p->request.productId().equals(p.getProductId())).findFirst().orElseThrow(()->new vn.teasmart.backend.exception.ResourceNotFoundException("Sản phẩm không còn được phép hiển thị."));
