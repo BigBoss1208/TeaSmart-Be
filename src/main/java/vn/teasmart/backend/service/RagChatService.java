@@ -56,7 +56,8 @@ public class RagChatService  {
         }
         if(!enabled || Boolean.FALSE.equals(request.allowLlm()))return new RagChatResponse("KNOWLEDGE_UNAVAILABLE","Mình chưa có đủ tài liệu đã xác minh để trả lời câu hỏi kiến thức này lúc này. Bạn vẫn có thể hỏi mình về sản phẩm, giá, tồn kho hoặc cách mua hàng trên TeaSmart.",advice.preferences(),List.of(),new vn.teasmart.backend.dto.response.TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of()),List.of(),null,false,"KNOWLEDGE",List.of());
         if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("LLM call cannot hold database transaction.");
-        var body=Map.of("question",request.message(),"history",history);
+        var knowledgeHistory=history.stream().filter(text -> Set.of(ChatIntentClassifier.Intent.TEA_KNOWLEDGE,ChatIntentClassifier.Intent.TEA_ORIGIN,ChatIntentClassifier.Intent.BREWING_GUIDE).contains(ChatIntentClassifier.classify(text,false))).toList();
+        var body=Map.of("question",request.message(),"history",knowledgeHistory);
         CompletableFuture<HttpResponse<byte[]>> pending=null;
         try {
             pending=http.sendAsync(HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(35)).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body))).build(),info->new LimitedBody());
@@ -66,7 +67,7 @@ public class RagChatService  {
                 String code="RAG_UNAVAILABLE";
                 try {
                     String c=json.readTree(bytes).path("code").asText();
-                    if(Set.of("RAG_NOT_CONFIGURED","RAG_PROVIDER_UNAVAILABLE","RAG_TIMEOUT","RAG_INVALID_OUTPUT","RAG_UNGROUNDED_OUTPUT","RAG_BUSINESS_CLAIM_REJECTED","RAG_BUSY").contains(c))code=c;
+                    if(Set.of("RAG_NOT_CONFIGURED","RAG_PROVIDER_UNAVAILABLE","RAG_TIMEOUT","RAG_INVALID_OUTPUT","RAG_UNGROUNDED_OUTPUT","RAG_BUSINESS_CLAIM_REJECTED","RAG_BUSY","RAG_CALLS_DISABLED","RAG_RATE_LIMITED","RAG_PROVIDER_AUTH_REJECTED","RAG_MODEL_UNAVAILABLE","RAG_MODEL_RETIRED","RAG_PROVIDER_CONFIG_INVALID").contains(c))code=c;
                 }
                 catch(RuntimeException ignored) {
                 }

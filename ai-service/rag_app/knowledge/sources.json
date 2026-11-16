@@ -4,32 +4,57 @@
     "title": "Vùng chè Thái Nguyên: Tân Cương, La Bằng, Trại Cài",
     "url": "https://chethainguyen.gov.vn/home/vung-che",
     "publisher": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
-    "accessedAt": "2026-10-17",
-    "text": "Tân Cương được giới thiệu với hương cốm, chát dịu và hậu ngọt. La Bằng nằm gần sườn đông Tam Đảo, suối Kẹm, được mô tả hương thanh và vị dịu. Trại Cài là vùng chè lâu đời ở Đồng Hỷ, có nước chè đậm và hậu vị chắc. Đây là mô tả vùng nguyên liệu, không phải cam kết mọi sản phẩm có cùng hương vị. Cần đối chiếu thông tin từng sản phẩm."
+    "accessedAt": "2026-11-16",
+    "text": "Tân Cương được giới thiệu với hương cốm, chát dịu và hậu ngọt. La Bằng nằm gần sườn đông Tam Đảo, suối Kẹm, được mô tả hương thanh và vị dịu. Trại Cài là vùng chè lâu đời ở Đồng Hỷ, có nước chè đậm và hậu vị chắc. Đây là mô tả vùng nguyên liệu, không phải cam kết mọi sản phẩm có cùng hương vị. Cần đối chiếu thông tin từng sản phẩm.",
+    "topics": [
+      "vùng chè",
+      "địa lý"
+    ],
+    "author": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "verified": true
   },
   {
     "id": "tn-culture",
     "title": "Thu hái, chế biến và văn hóa trà Thái Nguyên",
     "url": "https://en.thainguyen.gov.vn/thai-nguyen-tourist/the-flavor-of-tea-through-life-270941",
     "publisher": "Cổng thông tin tỉnh Thái Nguyên",
-    "accessedAt": "2026-10-17",
-    "text": "Bài giới thiệu phân biệt trà đinh từ búp, nõn tôm từ búp cùng lá non và móc câu từ mức thu hái nhiều lá hơn. Đây là cách mô tả trong bài, không phải tiêu chuẩn phân hạng của mọi nhà sản xuất.\n\nMột cơ sở ở La Bằng được bài viết mô tả có các bước làm héo, diệt men và sấy, xen kẽ ổn định độ ẩm. Cách làm cụ thể phụ thuộc cơ sở, không áp dụng một lịch sao cố định cho tất cả chè. Văn hóa thưởng trà coi trọng nước, trà, cách pha và ấm."
+    "accessedAt": "2026-11-16",
+    "text": "Bài giới thiệu phân biệt trà đinh từ búp, nõn tôm từ búp cùng lá non và móc câu từ mức thu hái nhiều lá hơn. Đây là cách mô tả trong bài, không phải tiêu chuẩn phân hạng của mọi nhà sản xuất.\n\nMột cơ sở ở La Bằng được bài viết mô tả có các bước làm héo, diệt men và sấy, xen kẽ ổn định độ ẩm. Cách làm cụ thể phụ thuộc cơ sở, không áp dụng một lịch sao cố định cho tất cả chè. Văn hóa thưởng trà coi trọng nước, trà, cách pha và ấm.",
+    "topics": [
+      "thu hái",
+      "chế biến",
+      "văn hóa"
+    ],
+    "author": "Cổng thông tin tỉnh Thái Nguyên",
+    "verified": true
   },
   {
     "id": "brewing",
     "title": "Pha trà xanh và bảo quản: hướng dẫn tham khảo của ITO EN",
     "url": "https://www.itoen-global.com/allabout_greentea/how_to_prepare/",
     "publisher": "ITO EN — nhà sản xuất trà",
-    "accessedAt": "2026-10-17",
-    "text": "Hướng dẫn ITO EN cho trà xanh Nhật phân biệt lượng lá, lượng nước, nhiệt độ và thời gian hãm theo loại trà. Không có một công thức nhiệt độ chung phù hợp mọi trà xanh. Khi pha chè bị đắng hoặc chát quá, cần xem lại lượng lá, nhiệt độ nước và thời gian hãm theo hướng dẫn của sản phẩm.\n\nĐể bảo quản trà khô, ITO EN khuyến nghị hạn chế tiếp xúc với ẩm và oxy, dùng dụng cụ đựng trà phù hợp. Nguồn này là hướng dẫn trà Nhật, không phải tiêu chuẩn riêng chè Thái Nguyên; ưu tiên hướng dẫn trên bao bì từng sản phẩm."
+    "accessedAt": "2026-11-16",
+    "text": "Hướng dẫn ITO EN phân biệt cách pha theo từng trà xanh Nhật. Ví dụ Sencha tiêu chuẩn dùng 4 g lá, 200 ml nước, 80–90°C và khoảng 30 giây; Gyokuro dùng điều kiện khác. Các con số này không phải công thức chè Thái Nguyên. Lượng lá, loại nước, nhiệt độ và thời gian hãm cùng ảnh hưởng hương vị. Ưu tiên hướng dẫn trên bao bì và điều chỉnh theo loại chè; không áp một nhiệt độ cố định cho mọi sản phẩm.",
+    "topics": [
+      "pha chè",
+      "vị chát"
+    ],
+    "author": "ITO EN — nhà sản xuất trà",
+    "verified": true
   },
   {
     "id": "tea-general",
     "title": "Cây chè và giá trị văn hóa — FAO",
     "url": "https://www.fao.org/markets-and-trade/commodities-overview/beverages/tea/2/en",
     "publisher": "Food and Agriculture Organization of the United Nations",
-    "accessedAt": "2026-10-17",
-    "text": "FAO giới thiệu trà gắn với cây Camellia sinensis và là đồ uống có vai trò kinh tế, văn hóa ở nhiều quốc gia. Sản xuất và chế biến chè tạo sinh kế cho nhiều gia đình. Thông tin tổng quan này không chứng minh lợi ích điều trị bệnh của một sản phẩm; không dùng trà thay tư vấn y tế."
+    "accessedAt": "2026-11-16",
+    "text": "FAO giới thiệu trà gắn với cây Camellia sinensis và là đồ uống có vai trò kinh tế, văn hóa ở nhiều quốc gia. Sản xuất và chế biến chè tạo sinh kế cho nhiều gia đình. Thông tin tổng quan này không chứng minh lợi ích điều trị bệnh của một sản phẩm; không dùng trà thay tư vấn y tế.",
+    "topics": [
+      "tổng quan",
+      "văn hóa"
+    ],
+    "author": "Food and Agriculture Organization of the United Nations",
+    "verified": true
   },
   {
     "id": "plant-health",
@@ -37,6 +62,103 @@
     "url": "https://trongtrotbaovethucvat.thainguyen.gov.vn/",
     "publisher": "Chi cục Trồng trọt và Bảo vệ thực vật Thái Nguyên",
     "accessedAt": "2026-10-17",
-    "text": "Cổng Chi cục có thông tin tăng cường kiểm tra bệnh phồng lá trên cây chè. Nguồn tổng quan hiện có chưa đủ để xác định bệnh từ ảnh hoặc chỉ định thuốc, liều lượng và lịch phun. Khi nghi ngờ sâu bệnh cần thu thập triệu chứng và tham khảo cán bộ bảo vệ thực vật địa phương. Chatbot không phải mô hình chẩn đoán ảnh lá chè."
+    "text": "Cổng Chi cục có thông tin tăng cường kiểm tra bệnh phồng lá trên cây chè. Nguồn tổng quan hiện có chưa đủ để xác định bệnh từ ảnh hoặc chỉ định thuốc, liều lượng và lịch phun. Khi nghi ngờ sâu bệnh cần thu thập triệu chứng và tham khảo cán bộ bảo vệ thực vật địa phương. Chatbot không phải mô hình chẩn đoán ảnh lá chè.",
+    "topics": [
+      "giới hạn chẩn đoán"
+    ],
+    "author": "Chi cục Trồng trọt và Bảo vệ thực vật Thái Nguyên",
+    "verified": false
+  },
+  {
+    "id": "tn-regions-other",
+    "title": "Khe Cốc và Đồng Phúc trong các vùng chè Thái Nguyên",
+    "url": "https://chethainguyen.gov.vn/home/vung-che",
+    "publisher": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "author": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "vùng chè",
+      "Khe Cốc",
+      "Đồng Phúc"
+    ],
+    "text": "Cổng chè Thái Nguyên giới thiệu Khe Cốc gắn với vùng nguyên liệu, liên kết hộ dân và hợp tác xã; Đồng Phúc gắn với chè Shan tuyết và địa hình núi. Đây là giới thiệu vùng, không xác nhận từng sản phẩm TeaSmart có chứng nhận VietGAP, hữu cơ hay nguồn gốc tương ứng. Cần đọc thông tin sản phẩm và bằng chứng truy xuất riêng.",
+    "verified": true
+  },
+  {
+    "id": "tn-tea-types",
+    "title": "Nguyên liệu chè đinh, nõn tôm và móc câu trong một bài giới thiệu địa phương",
+    "url": "https://en.thainguyen.gov.vn/thai-nguyen-tourist/the-flavor-of-tea-through-life-270941",
+    "publisher": "Cổng thông tin tỉnh Thái Nguyên",
+    "author": "Cổng thông tin tỉnh Thái Nguyên",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "loại chè",
+      "so sánh",
+      "thu hái"
+    ],
+    "text": "Bài giới thiệu mô tả chè đinh từ búp riêng, nõn tôm từ búp cùng một lá đang mở, móc câu thêm một lá nữa. Đây là mô tả trong nguồn, không là tiêu chuẩn phân hạng chung. Không suy ra loại nào ít chát hoặc tốt hơn chỉ từ tên thương mại; hương vị còn phụ thuộc nguyên liệu và chế biến.",
+    "verified": true
+  },
+  {
+    "id": "tan-cuong-detail",
+    "title": "Đặc điểm vùng chè Tân Cương",
+    "url": "https://chethainguyen.gov.vn/home/vung-che/tan-cuong",
+    "publisher": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "author": "UBND tỉnh Thái Nguyên — Cổng nhận diện thương hiệu Chè Thái Nguyên",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "Tân Cương",
+      "vùng chè",
+      "chỉ dẫn địa lý"
+    ],
+    "text": "Nguồn địa phương giới thiệu Tân Cương là vùng bán sơn địa giữa Tam Đảo và hồ Núi Cốc, có khí hậu ẩm và đất feralit, phù sa sông Công. Hương cốm, chát dịu và hậu ngọt là mô tả vùng trong bài. Nguồn nêu bảo hộ chỉ dẫn địa lý và di sản tri thức trồng, chế biến chè; không có nghĩa mọi gói mang tên Tân Cương đều được chứng nhận. Kiểm tra nhãn và truy xuất từng sản phẩm.",
+    "verified": true
+  },
+  {
+    "id": "tea-storage",
+    "title": "Bảo quản trà lá và túi lọc sau mở bao bì — ITO EN",
+    "url": "https://www.itoen.jp/customer/faq/61316/",
+    "publisher": "ITO EN — nhà sản xuất trà",
+    "author": "ITO EN — nhà sản xuất trà",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "bảo quản",
+      "ẩm",
+      "ánh sáng",
+      "mùi"
+    ],
+    "text": "ITO EN hướng dẫn đóng kín miệng túi sau khi mở, tránh nắng trực tiếp và nơi nóng ẩm, bảo quản ở chỗ mát và tối. Ánh sáng, nhiệt độ, độ ẩm, oxy và mùi lạ là các yếu tố làm giảm chất lượng trà. Hãng không khuyến nghị cất sản phẩm đã mở trong tủ lạnh vì có thể hút ẩm và mùi. Đây là hướng dẫn cho sản phẩm của hãng, không xác lập hạn sử dụng của chè TeaSmart; đọc hạn dùng và chỉ dẫn trên bao bì.",
+    "verified": true
+  },
+  {
+    "id": "green-processing",
+    "title": "Các công đoạn sản xuất trà xanh Nhật — ví dụ về vai trò chế biến",
+    "url": "https://www.itoen-global.com/allabout_greentea/production/process.php",
+    "publisher": "ITO EN — nhà sản xuất trà",
+    "author": "ITO EN — nhà sản xuất trà",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "chế biến",
+      "diệt men",
+      "vò",
+      "sấy"
+    ],
+    "text": "Quy trình Sencha trong nguồn gồm xử lý lá tươi, hấp để hạn chế hoạt động oxy hóa của enzyme, làm nguội, các công đoạn vò và làm khô. Vò hỗ trợ giải phóng thành phần khi pha; làm khô giúp ổn định sản phẩm. Đây là ví dụ trà Nhật, không thay thế quy trình sao chè Thái Nguyên. Thời gian và nhiệt độ cụ thể phụ thuộc loại trà và cơ sở; không suy ra một lịch sao chung.",
+    "verified": true
+  },
+  {
+    "id": "green-types",
+    "title": "Phân biệt một số trà xanh Nhật theo nguyên liệu và chế biến",
+    "url": "https://www.itoen-global.com/allabout_greentea/type/",
+    "publisher": "ITO EN — nhà sản xuất trà",
+    "author": "ITO EN — nhà sản xuất trà",
+    "accessedAt": "2026-11-16",
+    "topics": [
+      "loại chè",
+      "trà xanh",
+      "so sánh"
+    ],
+    "text": "Trà xanh Nhật có nhiều dòng khác nhau theo cách trồng, thời điểm thu hái và chế biến. Nguồn giới thiệu Sencha, Gyokuro, Matcha, Hojicha và các loại khác. Xử lý nhiệt lá tươi bằng hấp hoặc sao hạn chế hoạt động oxy hóa của enzyme. Không dùng tên trà Nhật để phân hạng chè đinh, móc câu hoặc nõn tôm của Thái Nguyên; cần đối chiếu từng nguồn và từng sản phẩm.",
+    "verified": true
   }
 ]

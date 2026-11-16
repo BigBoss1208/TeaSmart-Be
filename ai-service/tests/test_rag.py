@@ -24,10 +24,10 @@ def test_vectors_are_normalized_deterministic_and_accent_insensitive():
 def test_chunking_and_rebuild_are_bounded_and_repeatable(store):
     assert all(len(x)<=450 for x in chunks("chè "*400))
     first=store.search("bảo quản trà khô ẩm oxy");store.rebuild();assert store.search("bảo quản trà khô ẩm oxy")==first
-@pytest.mark.parametrize("query,source",[("pha trà nước thời gian hãm đắng","brewing"),("bảo quản trà khô ẩm oxy","brewing"),("Tân Cương La Bằng Trại Cài","tn-regions"),("thu hái làm héo diệt men","tn-culture"),("phồng lá bệnh cây chè","plant-health")])
+@pytest.mark.parametrize("query,source",[("pha trà nước thời gian hãm đắng","brewing"),("bảo quản trà khô ẩm oxy","brewing"),("Tân Cương La Bằng Trại Cài","tn-regions"),("thu hái làm héo diệt men","tn-culture")])
 def test_retrieval_returns_real_source(store,query,source):
     assert source in [r["sourceId"] for r in store.search(query)]
-    assert all(r["url"].startswith("https://") and r["accessedAt"]=="2026-10-17" for r in store.search(query))
+    assert all(r["url"].startswith("https://") and r["accessedAt"]=="2026-11-16" for r in store.search(query))
 def test_service_roundtrip_with_explicit_fake_provider(store):
     provider=FakeProvider()
     with TestClient(create_app(provider,store)) as client:
@@ -57,3 +57,15 @@ def test_unrelated_query_returns_no_evidence_without_llm(store):
         assert r.status_code==200 and not r.json()["llmUsed"] and not r.json()["sources"]
 def test_body_size_is_bounded(store):
     with TestClient(create_app(FakeProvider(),store)) as client: assert client.post("/answer",content="x"*17000).status_code==413
+
+
+def test_unverified_legacy_note_is_not_indexed(store):
+    import sqlite3
+    with sqlite3.connect(store.path) as db:
+        assert db.execute("SELECT COUNT(*) FROM chunks WHERE source_id='plant-health'").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 10
+
+def test_invalid_source_is_rejected_before_replacing_index(tmp_path):
+    path=tmp_path/"invalid.json"
+    path.write_text(json.dumps([{"id":"x","title":"x","url":"http://invalid","publisher":"x","accessedAt":"2026-11-16","text":"x"}]),encoding="utf-8")
+    with pytest.raises(ValueError): VectorStore(tmp_path/"i.db",path).rebuild()

@@ -103,3 +103,7 @@ Bước nghiệm thu còn thiếu: có provider endpoint/model/key hợp lệ �
 Widget giữ preferences (ngân sách/khẩu vị/mục đích), tối đa 6 câu hỏi và tối đa 4 ID sản phẩm vừa gợi ý trong bộ nhớ phiên trang. Backend luôn đọc lại danh mục trước khi trả lời; ID từ client không phải bằng chứng về giá hoặc quyền truy cập. Nút làm mới và chuyển context sản phẩm xóa state. Refresh bắt đầu phiên tư vấn mới.
 
 “Dưới” là nhỏ hơn ngưỡng, “tối đa” bao gồm ngưỡng; “khoảng” dùng ±10% và phải thông báo cách hiểu. FAQ chỉ hướng dẫn tính năng đã đối chiếu source, không tự thao tác đơn hàng. Giá/tồn kho không gửi tới LLM.
+
+## Gemini và quyền gọi provider
+
+Xem [GEMINI_SETUP.md](GEMINI_SETUP.md). Key chỉ được nhập ẩn trong launcher; `RAG_LLM_CALLS_ENABLED` mặc định false. Nhập key không tự cho phép gọi model. Chưa nghiệm thu inference thật.

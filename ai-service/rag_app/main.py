@@ -23,9 +23,9 @@ def validate_output(result, passages):
         if not isinstance(item,dict) or set(item)!={"text","sourceId","quote"}: raise RagFailure("RAG_INVALID_OUTPUT",502)
         text, sid, quote=item["text"],item["sourceId"],item["quote"]
         if not all(isinstance(v,str) for v in (text,sid,quote)) or sid not in allowed or not 8<=len(quote)<=450 or quote not in allowed[sid]["text"] or not 1<=len(text)<=800: raise RagFailure("RAG_UNGROUNDED_OUTPUT",502)
-        if re.search(r"https?://|<[^>]+>|\d[\d.,]*\s*(?:đồng|vnd|vnđ|gói)|bán chạy|đã bán|tồn kho|doanh thu",text,re.I): raise RagFailure("RAG_BUSINESS_CLAIM_REJECTED",502)
+        if re.search(r"https?://|<[^>]+>|\d[\d.,]*\s*(?:đồng|vnd|vnđ|₫|gói)|bán chạy|đã bán|tồn kho|doanh thu",text,re.I): raise RagFailure("RAG_BUSINESS_CLAIM_REJECTED",502)
         p=allowed[sid];paragraphs.append(text);sources.append({k:p[k] for k in ("id","title","url","publisher","accessedAt")})
-    return {"method":"RAG_LLM_V1","reply":"\n\n".join(paragraphs) if paragraphs else "Chưa có đủ tài liệu đã kiểm chứng để trả lời câu hỏi này.","sources":list({s["id"]:s for s in sources}.values()),"embeddingMethod":MODEL,"llmUsed":True}
+    return {"method":"RAG_LLM_V1" if paragraphs else "RAG_NO_EVIDENCE","reply":"\n\n".join(paragraphs) if paragraphs else "Chưa có đủ tài liệu đã kiểm chứng để trả lời câu hỏi này.","sources":list({s["id"]:s for s in sources}.values()),"embeddingMethod":MODEL,"llmUsed":True}
 class LimitBody:
     def __init__(self,app): self.app=app
     async def __call__(self,scope,receive,send):
@@ -54,7 +54,7 @@ def create_app(provider=None,store=None):
     @app.exception_handler(Exception)
     async def unexpected(request,error): return JSONResponse({"code":"RAG_INTERNAL_ERROR"},status_code=500)
     @app.get("/health")
-    def health(): return {"retrieval":"READY","llmConfigured":provider.configured,"embeddingMethod":MODEL}
+    def health(): return {"retrieval":"READY","llmConfigured":provider.configured,"embeddingMethod":MODEL,"provider":getattr(provider,"provider","test-double"),"providerCallsEnabled":getattr(provider,"calls_enabled",False),"model":getattr(provider,"model",None) if provider.configured else None}
     @app.post("/answer")
     def answer(body:Request):
         if not body.question.strip() or any(len(h)>1000 for h in body.history): raise RagFailure("RAG_INVALID_REQUEST",400)

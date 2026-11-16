@@ -1,6 +1,8 @@
 """Versioned lexical embeddings + SQLite vector store, no model download or MySQL access."""
 import hashlib, json, math, re, sqlite3, unicodedata
 from pathlib import Path
+from datetime import date
+from urllib.parse import urlparse
 MODEL = "VI_LEXICAL_HASH_2048_V1"
 def normalized(text):
     return "".join(c for c in unicodedata.normalize("NFD", text.lower().replace("đ", "d")) if unicodedata.category(c) != "Mn")
@@ -29,13 +31,27 @@ class VectorStore:
     def __init__(self, path, sources): self.path=Path(path); self.sources=Path(sources)
     def rebuild(self):
         documents=json.loads(self.sources.read_text(encoding="utf-8"))
+        seen=set()
+        for doc in documents:
+            required=("id","title","url","publisher","accessedAt","text")
+            if any(not isinstance(doc.get(k),str) or not doc[k].strip() for k in required): raise ValueError("Invalid knowledge document metadata")
+            if doc["id"] in seen: raise ValueError("Duplicate knowledge document ID")
+            seen.add(doc["id"])
+            url=urlparse(doc["url"])
+            if url.scheme!="https" or not url.hostname or url.username or url.password: raise ValueError("Invalid source URL")
+            date.fromisoformat(doc["accessedAt"])
+            if not isinstance(doc.get("topics",[]),list) or any(not isinstance(x,str) or not x.strip() for x in doc.get("topics",[])): raise ValueError("Invalid source topics")
+        documents=[doc for doc in documents if doc.get("verified",True)]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.path) as db:
             db.execute("CREATE TABLE IF NOT EXISTS chunks (id TEXT PRIMARY KEY, source_id TEXT, title TEXT, url TEXT, publisher TEXT, accessed_at TEXT, text TEXT, embedding TEXT, model TEXT)")
+            db.execute("CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, metadata TEXT NOT NULL)")
             db.execute("DELETE FROM chunks")
+            db.execute("DELETE FROM documents")
             for doc in documents:
+                db.execute("INSERT INTO documents VALUES (?,?)",(doc["id"],json.dumps({k:v for k,v in doc.items() if k!="text"},ensure_ascii=False)))
                 for i,text in enumerate(chunks(doc["text"])):
-                    db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?)",(f"{doc['id']}:{i}",doc["id"],doc["title"],doc["url"],doc["publisher"],doc["accessedAt"],text,json.dumps(embed(doc["title"]+" "+text)),MODEL))
+                    db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?)",(f"{doc['id']}:{i}",doc["id"],doc["title"],doc["url"],doc["publisher"],doc["accessedAt"],text,json.dumps(embed(doc["title"]+" "+" ".join(doc.get("topics",[]))+" "+text)),MODEL))
         return len(documents)
     def search(self, query, limit=4):
         q=embed(query); result=[]

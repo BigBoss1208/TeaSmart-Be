@@ -1,8 +1,25 @@
+param(
+    [ValidateSet('Existing','Gemini')][string]$Provider='Existing',
+    [string]$Model='',
+    [switch]$AllowProviderCalls,
+    [switch]$ConfirmFreeTier
+)
 $ErrorActionPreference = 'Stop'
-$keys = @('RAG_LLM_URL', 'RAG_LLM_MODEL', 'RAG_LLM_API_KEY')
+$keys = @('RAG_LLM_URL', 'RAG_LLM_MODEL', 'RAG_LLM_API_KEY', 'RAG_LLM_PROVIDER', 'RAG_LLM_CALLS_ENABLED')
 $previous = @{}
 foreach ($key in $keys) { $previous[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
 try {
+    if ($Provider -eq 'Gemini') {
+        if ($AllowProviderCalls -and !$ConfirmFreeTier) { throw 'Confirm Free Tier project and explicitly approve calls before enabling inference.' }
+        $env:RAG_LLM_PROVIDER='gemini'
+        $env:RAG_LLM_URL='https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+        if ([string]::IsNullOrWhiteSpace($Model)) { throw 'An explicit Gemini model ID is required. No automatic fallback.' }
+        if ($Model -notmatch '^gemini-[a-z0-9.-]+$') { throw 'Invalid Gemini model ID.' }
+        if ($Model -eq 'gemini-2.5-flash' -and (Get-Date) -ge [datetime]'2026-12-01') { throw 'gemini-2.5-flash may redirect after retirement; select an approved available model.' }
+        $env:RAG_LLM_MODEL=$Model
+    }
+    $env:RAG_LLM_CALLS_ENABLED=if($AllowProviderCalls){'true'}else{'false'}
+    if (!$AllowProviderCalls) { Write-Host 'Provider calls BLOCKED. Loading a key does not enable inference.' }
     if ([string]::IsNullOrWhiteSpace($env:RAG_LLM_URL)) { $env:RAG_LLM_URL = Read-Host 'Full HTTPS chat/completions endpoint (or localhost HTTP)' }
     if ([string]::IsNullOrWhiteSpace($env:RAG_LLM_MODEL)) { $env:RAG_LLM_MODEL = Read-Host 'Existing provider model ID' }
     if ([string]::IsNullOrWhiteSpace($env:RAG_LLM_API_KEY)) {
