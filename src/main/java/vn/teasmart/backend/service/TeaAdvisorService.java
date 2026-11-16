@@ -29,12 +29,22 @@ public class TeaAdvisorService {
         return TeaRecommendationEngine.rank(products,null,request,limit);
     }
     public TeaAdviceResponse advise(TeaAdviceRequest request) {
+        return advise(request, 4, false);
+    }
+    public TeaAdviceResponse adviseChat(TeaAdviceRequest request) {
+        return advise(request, Integer.MAX_VALUE, true);
+    }
+    private TeaAdviceResponse advise(TeaAdviceRequest request, int limit, boolean chat) {
         if(request.message().matches("(?is).*\\bBearer\\s+\\S+.*")||request.message().matches("(?s).*eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+.*"))throw new IllegalArgumentException("Credentials are not accepted in chat text.");
         var products=catalog.findVisibleCatalog();
         var parsed=TeaIntentParser.parse(request.message(),request.preferences(),products);
         var preferences=merge(parsed.preferences(),request.context());
         validate(preferences,products);
-        var result=TeaRecommendationEngine.rank(products,null,preferences,4,request.message());
+        var result=TeaRecommendationEngine.rank(chat && Integer.valueOf(1).equals(preferences.astringency()) ? products.stream().filter(p -> p.getAstringencyLevel()!=null && p.getAstringencyLevel()>=1 && p.getAstringencyLevel()<=2).toList() : products,null,preferences,limit,request.message());
+        if(chat && Integer.valueOf(1).equals(preferences.astringency())) {
+            var ordered=result.items().stream().sorted(Comparator.comparingInt(item -> products.stream().filter(p -> p.getProductId().equals(item.product().productId())).findFirst().orElseThrow().getAstringencyLevel())).toList();
+            result=new TeaRecommendationResponse(result.method(),result.fallback(),ordered);
+        }
         String reply;
         if(result.items().isEmpty())reply="Hiện chưa có sản phẩm còn hàng phù hợp các điều kiện đã chọn. Bạn có thể đổi ngân sách, danh mục hoặc vùng chè; mình không tự nới ngân sách.";
         else {

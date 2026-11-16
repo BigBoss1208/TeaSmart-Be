@@ -28,7 +28,7 @@ public final class TeaRecommendationEngine {
             if(q.minPrice()!=null&&q.maxPrice()!=null)target=q.minPrice().add(q.maxPrice()).divide(BigDecimal.valueOf(2));
             else if(q.maxPrice()!=null)target=q.maxPrice();else if(q.minPrice()!=null)target=q.minPrice();
             if(target!=null&&target.signum()>0) {weight+=.20;sum+=.20*p.getPrice().min(target).divide(p.getPrice().max(target),8,RoundingMode.HALF_UP).doubleValue();
-                reasons.add(q.maxPrice()!=null||q.minPrice()!=null?"Trong ngân sách đã chọn":"So sánh mức giá với sản phẩm đang xem");}
+                reasons.add(q.maxPrice()!=null||q.minPrice()!=null?"Giá nằm trong ngân sách của bạn":"So sánh mức giá với sản phẩm đang xem");}
             Integer[] actual={p.getStrengthLevel(),p.getAstringencyLevel(),p.getAromaLevel(),p.getAftertasteLevel()};
             Integer[] desired={q.strength(),q.astringency(),q.aroma(),q.aftertaste()};
             Integer[] previous=seed==null?new Integer[4]:new Integer[]{seed.getStrengthLevel(),seed.getAstringencyLevel(),seed.getAromaLevel(),seed.getAftertasteLevel()};
@@ -38,7 +38,7 @@ public final class TeaRecommendationEngine {
                 if(valid(d)) {
                     // Missing data has no fabricated value; it cannot count as a perfect match.
                     weight+=.075;
-                    if(valid(actual[i])) {sum+=.075*(1-Math.abs(actual[i]-d)/4.0);reasons.add(labels[i]+": "+actual[i]+"/5");}
+                    if(valid(actual[i])) {sum+=.075*(1-Math.abs(actual[i]-d)/4.0);reasons.add(i==1&&Integer.valueOf(1).equals(q.astringency())&&actual[i]<=2?"Độ chát thấp ("+actual[i]+"/5), phù hợp sở thích ít chát của bạn":labels[i]+": "+actual[i]+"/5");}
                     else reasons.add("Chưa có dữ liệu: "+labels[i].toLowerCase(Locale.ROOT));
                 }
             }
@@ -51,7 +51,7 @@ public final class TeaRecommendationEngine {
             if(seed!=null||message!=null) {
                 Set<String> tokens=TeaText.tokens(message!=null?message:seed.getName()+" "+Objects.toString(seed.getTasteNote(),""));
                 if(!tokens.isEmpty()) {Set<String> other=TeaText.tokens(p.getName()+" "+Objects.toString(p.getTasteNote(),"")+" "+p.getCategory().getName()+" "+p.getRegion().getName());int matched=0;for(String word:tokens)if(other.contains(word))matched++;
-                    weight+=.10;sum+=.10*matched/tokens.size();if(matched>0)reasons.add("Có từ khóa hương vị tương đồng");}
+                    weight+=.10;sum+=.10*matched/tokens.size();if(matched>0)reasons.add("Mô tả gần với nhu cầu bạn đang tìm");}
             }
             double score=weight==0?0:sum/weight;
             if(reasons.isEmpty())reasons.add("Sản phẩm đang hiển thị và còn hàng; chưa đủ thông tin để so khớp khẩu vị");
