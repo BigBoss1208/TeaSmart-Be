@@ -1,8 +1,25 @@
-import json, os, re, logging, time, uuid
+import json, os, re, logging, time, uuid, socket, ssl
 from urllib.parse import urlparse
 import httpx
 class RagFailure(Exception):
-    def __init__(self, code, status=503): self.code=code; self.status=status
+    def __init__(self, code, status=503, *, diagnostic_code=None, upstream_status=None):
+        super().__init__(code)
+        self.code=code; self.status=status
+        self.diagnostic_code=diagnostic_code or code
+        self.upstream_status=upstream_status
+
+def _transport_diagnostic(error):
+    # Exception messages/URLs may contain credentials: inspect types only.
+    current=error; seen=set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, socket.gaierror): return "RAG_DNS_ERROR"
+        if isinstance(current, ssl.SSLError): return "RAG_TLS_ERROR"
+        current=current.__cause__ or current.__context__
+    if isinstance(error, httpx.ConnectError): return "RAG_CONNECT_ERROR"
+    if isinstance(error, httpx.ProtocolError): return "RAG_HTTP_PROTOCOL_ERROR"
+    if isinstance(error, httpx.NetworkError): return "RAG_NETWORK_ERROR"
+    return "RAG_HTTP_TRANSPORT_ERROR"
 GEMINI_MODELS=frozenset({"gemini-3.5-flash-lite","gemini-2.5-flash"})
 logger=logging.getLogger("teasmart.rag.provider")
 
@@ -34,20 +51,35 @@ class LlmProvider:
         request_id=uuid.uuid4().hex
         started=time.monotonic()
         safe_model=self.model if re.fullmatch(r"[A-Za-z0-9._:/-]{1,128}",self.model) else "configured-model"
+        upstream_status=None
+        def failure(public_code, diagnostic_code, status=503):
+            # Fixed codes and locally generated metadata only; never log exception
+            # messages, request/response bodies, headers, URLs or user questions.
+            logger.warning("rag_provider_failure request_id=%s model=%s duration_ms=%d diagnostic_code=%s upstream_status=%s",
+                request_id,safe_model,int((time.monotonic()-started)*1000),diagnostic_code,upstream_status)
+            return RagFailure(public_code,status,diagnostic_code=diagnostic_code,upstream_status=upstream_status)
         try:
             with httpx.Client(timeout=httpx.Timeout(25,connect=5),follow_redirects=False,trust_env=False) as client:
                 with client.stream("POST",self.url,headers={"Authorization":"Bearer "+self.key,"Content-Type":"application/json"},json=body) as response:
-                    if response.status_code==429: raise RagFailure("RAG_RATE_LIMITED",503)
-                    if response.status_code in (401,403): raise RagFailure("RAG_PROVIDER_AUTH_REJECTED",503)
-                    if response.status_code==404: raise RagFailure("RAG_MODEL_UNAVAILABLE",503)
-                    if response.status_code!=200: raise RagFailure("RAG_PROVIDER_UNAVAILABLE")
+                    upstream_status=response.status_code
+                    diagnostic_code=f"RAG_UPSTREAM_HTTP_{upstream_status}"
+                    if upstream_status==429: raise failure("RAG_RATE_LIMITED",diagnostic_code)
+                    if upstream_status in (401,403): raise failure("RAG_PROVIDER_AUTH_REJECTED",diagnostic_code)
+                    if upstream_status==404: raise failure("RAG_MODEL_UNAVAILABLE",diagnostic_code)
+                    if upstream_status!=200: raise failure("RAG_PROVIDER_UNAVAILABLE",diagnostic_code)
                     data=bytearray()
                     for chunk in response.iter_bytes():
                         data.extend(chunk)
-                        if len(data)>65536: raise RagFailure("RAG_INVALID_OUTPUT",502)
+                        if len(data)>65536: raise failure("RAG_INVALID_OUTPUT","RAG_PROVIDER_RESPONSE_TOO_LARGE",502)
             result=json.loads(json.loads(data)["choices"][0]["message"]["content"])
-            logger.info("rag_provider_result request_id=%s model=%s duration_ms=%d status=success",request_id,safe_model,int((time.monotonic()-started)*1000))
+            logger.info("rag_provider_result request_id=%s model=%s duration_ms=%d status=decoded",request_id,safe_model,int((time.monotonic()-started)*1000))
             return result
-        except httpx.TimeoutException: raise RagFailure("RAG_TIMEOUT",504) from None
-        except httpx.HTTPError: raise RagFailure("RAG_PROVIDER_UNAVAILABLE",503) from None
-        except (ValueError,KeyError,IndexError,TypeError): raise RagFailure("RAG_INVALID_OUTPUT",502) from None
+        except httpx.TimeoutException as error:
+            diagnostic_code="RAG_TIMEOUT"
+            for kind,label in ((httpx.ConnectTimeout,"CONNECT"),(httpx.ReadTimeout,"READ"),(httpx.WriteTimeout,"WRITE"),(httpx.PoolTimeout,"POOL")):
+                if isinstance(error,kind): diagnostic_code=f"RAG_TIMEOUT_{label}"; break
+            raise failure("RAG_TIMEOUT",diagnostic_code,504) from None
+        except httpx.HTTPError as error:
+            raise failure("RAG_PROVIDER_UNAVAILABLE",_transport_diagnostic(error)) from None
+        except (ValueError,KeyError,IndexError,TypeError):
+            raise failure("RAG_INVALID_OUTPUT","RAG_PROVIDER_RESPONSE_INVALID",502) from None
