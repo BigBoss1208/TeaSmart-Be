@@ -14,8 +14,7 @@ try {
         $env:RAG_LLM_PROVIDER='gemini'
         $env:RAG_LLM_URL='https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
         if ([string]::IsNullOrWhiteSpace($Model)) { throw 'An explicit Gemini model ID is required. No automatic fallback.' }
-        if ($Model -notmatch '^gemini-[a-z0-9.-]+$') { throw 'Invalid Gemini model ID.' }
-        if ($Model -eq 'gemini-2.5-flash' -and (Get-Date) -ge [datetime]'2026-12-01') { throw 'gemini-2.5-flash may redirect after retirement; select an approved available model.' }
+        if ($Model -notin @('gemini-3.5-flash-lite','gemini-2.5-flash')) { throw 'Invalid Gemini model ID.' }
         $env:RAG_LLM_MODEL=$Model
     }
     $env:RAG_LLM_CALLS_ENABLED=if($AllowProviderCalls){'true'}else{'false'}

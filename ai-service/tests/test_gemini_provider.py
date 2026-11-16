@@ -1,13 +1,12 @@
 """Offline transport contract tests. No Google request or real API key is used."""
 import json
-from datetime import date
 import httpx
 import pytest
 from rag_app.provider import LlmProvider, RagFailure
 
 @pytest.fixture
 def gemini(monkeypatch):
-    for name,value in {"RAG_LLM_PROVIDER":"gemini","RAG_LLM_URL":"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions","RAG_LLM_MODEL":"gemini-2.5-flash","RAG_LLM_API_KEY":"unit-test-not-a-real-key"}.items():monkeypatch.setenv(name,value)
+    for name,value in {"RAG_LLM_PROVIDER":"gemini","RAG_LLM_URL":"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions","RAG_LLM_MODEL":"gemini-3.5-flash-lite","RAG_LLM_API_KEY":"unit-test-not-a-real-key"}.items():monkeypatch.setenv(name,value)
     monkeypatch.delenv("RAG_LLM_CALLS_ENABLED",raising=False)
     return monkeypatch
 
@@ -30,8 +29,9 @@ def test_gemini_compatible_payload_uses_selected_model_without_key_in_json(gemin
     assert LlmProvider().generate("cách pha chè",[],[])=={"paragraphs":[]}
     assert len(seen)==1
     body=json.loads(seen[0].content)
-    assert body["model"]=="gemini-2.5-flash"
-    assert body["reasoning_effort"]=="none"
+    assert body["model"]=="gemini-3.5-flash-lite"
+    assert "reasoning_effort" not in body
+    assert "temperature" not in body
     assert body["response_format"]=={"type":"json_object"}
     assert "unit-test-not-a-real-key" not in seen[0].content.decode()
     assert seen[0].headers["authorization"]=="Bearer unit-test-not-a-real-key"
@@ -59,12 +59,19 @@ def test_timeout_is_sanitized(gemini):
     assert error.value.code=="RAG_TIMEOUT"
     assert "private timeout detail" not in str(error.value)
 
-def test_retired_model_cannot_silently_redirect_after_cutoff(gemini):
-    import rag_app.provider as module
-    class Cutoff(date):
-        @classmethod
-        def today(cls):return cls(2026,12,1)
-    gemini.setattr(module,"date",Cutoff)
+def test_legacy_model_is_explicit_without_calendar_based_block(gemini):
+    gemini.setenv("RAG_LLM_MODEL","gemini-2.5-flash")
+    seen=[]
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200,json={"choices":[{"message":{"content":json.dumps({"paragraphs":[]})}}]})
+    transport(gemini,handler)
+    LlmProvider().generate("chè",[],[])
+    assert seen[0]["model"]=="gemini-2.5-flash"
+    assert seen[0]["reasoning_effort"]=="none"
+
+def test_unapproved_model_never_silently_replaces_selected_model(gemini):
+    gemini.setenv("RAG_LLM_MODEL","gemini-unapproved-model")
     gemini.setenv("RAG_LLM_CALLS_ENABLED","true")
     with pytest.raises(RagFailure) as error:LlmProvider().generate("chè",[],[])
-    assert error.value.code=="RAG_MODEL_RETIRED"
+    assert error.value.code=="RAG_PROVIDER_CONFIG_INVALID"
