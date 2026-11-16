@@ -81,9 +81,11 @@ public class RagChatService  {
                 String url=source.path("url").asText();
                 URI uri=URI.create(url);
                 if(!"https".equals(uri.getScheme())||uri.getHost()==null||uri.getUserInfo()!=null)throw new Failure("RAG_INVALID_OUTPUT",502);
+                for(String field:List.of("id","title","publisher","accessedAt"))if(source.path(field).asText().isBlank())throw new Failure("RAG_INVALID_OUTPUT",502);
                 sources.add(new Source(source.path("id").asText(),source.path("title").asText(),url,source.path("publisher").asText(),source.path("accessedAt").asText()));
                 if(sources.size()>4)throw new Failure("RAG_INVALID_OUTPUT",502);
             }
+            if((method.equals("RAG_LLM_V1")&&(sources.isEmpty()||!node.path("llmUsed").asBoolean()))||(method.equals("RAG_NO_EVIDENCE")&&!sources.isEmpty()))throw new Failure("RAG_INVALID_OUTPUT",502);
             return new RagChatResponse(method,reply,advice.preferences(),advice.notices(),advice.recommendations(),List.copyOf(sources),node.path("embeddingMethod").asText(),node.path("llmUsed").asBoolean(),"KNOWLEDGE",List.of());
         }
         catch(Failure e) {

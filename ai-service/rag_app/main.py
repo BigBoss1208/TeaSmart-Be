@@ -54,7 +54,7 @@ def create_app(provider=None,store=None):
     @app.exception_handler(Exception)
     async def unexpected(request,error): return JSONResponse({"code":"RAG_INTERNAL_ERROR"},status_code=500)
     @app.get("/health")
-    def health(): return {"retrieval":"READY","llmConfigured":provider.configured,"embeddingMethod":MODEL,"provider":getattr(provider,"provider","test-double"),"providerCallsEnabled":getattr(provider,"calls_enabled",False),"model":getattr(provider,"model",None) if provider.configured else None,"ragVersion":"grounded-partial-v2","knowledgeDocuments":getattr(store,"document_count",None),"knowledgeRevision":getattr(store,"knowledge_revision",None)}
+    def health(): return {"retrieval":"READY","llmConfigured":provider.configured,"embeddingMethod":MODEL,"provider":getattr(provider,"provider","test-double"),"providerCallsEnabled":getattr(provider,"calls_enabled",False),"model":getattr(provider,"model",None) if provider.configured else None,"ragVersion":"grounded-partial-v2","providerDiagnosticsVersion":getattr(provider,"diagnostics_version",None),"knowledgeDocuments":getattr(store,"document_count",None),"knowledgeRevision":getattr(store,"knowledge_revision",None)}
     @app.post("/answer")
     def answer(body:Request):
         if not body.question.strip() or any(len(h)>1000 for h in body.history): raise RagFailure("RAG_INVALID_REQUEST",400)

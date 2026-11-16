@@ -35,4 +35,25 @@ class RagChatServiceTest {
    var result=service.answer(request);assertEquals(kind,result.businessKind());assertFalse(result.llmUsed());
   }
  }
+
+ @Test void noEvidenceDoesNotInventSourcesOrSuccessfulAnswer()throws Exception{
+  for(boolean used:List.of(false,true))withPythonResponse("{\"method\":\"RAG_NO_EVIDENCE\",\"reply\":\"Chưa đủ tài liệu đã xác minh.\",\"sources\":[],\"llmUsed\":"+used+"}",200,service->{var result=service.answer(new RagChatRequest("cách pha trà",null,null,List.of("tôi thích chè nhẹ")));assertEquals("RAG_NO_EVIDENCE",result.method());assertTrue(result.sources().isEmpty());assertEquals(used,result.llmUsed());});
+ }
+ @Test void invalidSuccessWithoutEvidenceIsRejected()throws Exception{
+  for(String response:List.of("{\"method\":\"RAG_LLM_V1\",\"reply\":\"Unsupported answer\",\"sources\":[],\"llmUsed\":true}","{\"method\":\"RAG_LLM_V1\",\"reply\":\"Unsupported answer\",\"sources\":[{\"url\":\"https://example.invalid\"}],\"llmUsed\":true}"))withPythonResponse(response,200,service->{var error=assertThrows(RagChatService.Failure.class,()->service.answer(new RagChatRequest("cách pha trà",null,null,List.of("tôi thích chè nhẹ"))));assertEquals("RAG_INVALID_OUTPUT",error.code);assertEquals(502,error.status);});
+ }
+ @Test void providerFailuresAndTimeoutStaySafe()throws Exception{
+  for(String code:List.of("RAG_PROVIDER_UNAVAILABLE","RAG_RATE_LIMITED","RAG_PROVIDER_AUTH_REJECTED","RAG_MODEL_UNAVAILABLE","RAG_CALLS_DISABLED","RAG_TIMEOUT")){
+   int status=code.equals("RAG_TIMEOUT")?504:503;
+   withPythonResponse("{\"code\":\""+code+"\",\"message\":\"private-fixture\"}",status,service->{var error=assertThrows(RagChatService.Failure.class,()->service.answer(new RagChatRequest("cách pha trà",null,null,List.of("tôi thích chè nhẹ"))));assertEquals(code,error.code);assertEquals(status,error.status);assertFalse(error.getMessage().contains("private-fixture"));});
+  }
+ }
+ @Test void pythonContractContainsOnlyQuestionAndKnowledgeHistory()throws Exception{
+  var business=mock(RagBusinessService.class);var request=new RagChatRequest("cách pha chè",null,null,List.of("chè dưới 300k","bảo quản chè như thế nào"),null,11L);
+  when(business.snapshot(request)).thenReturn(new RagBusinessService.Snapshot(advice(),"KNOWLEDGE",List.of()));
+  var body=new java.util.concurrent.atomic.AtomicReference<String>();var path=new java.util.concurrent.atomic.AtomicReference<String>();
+  var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+  server.createContext("/answer",exchange->{path.set(exchange.getRequestURI().getPath());body.set(new String(exchange.getRequestBody().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));byte[] bytes="{\"method\":\"RAG_NO_EVIDENCE\",\"reply\":\"No evidence\",\"sources\":[],\"llmUsed\":false}".getBytes(java.nio.charset.StandardCharsets.UTF_8);exchange.sendResponseHeaders(200,bytes.length);exchange.getResponseBody().write(bytes);exchange.close();});server.start();
+  try{new RagChatService(business,true,"http://127.0.0.1:"+server.getAddress().getPort()).answer(request);var json=tools.jackson.databind.json.JsonMapper.builder().build().readTree(body.get());assertEquals("/answer",path.get());assertEquals(2,json.size());assertEquals(request.message(),json.path("question").asText());assertEquals(1,json.path("history").size());assertEquals("bảo quản chè như thế nào",json.path("history").get(0).asText());}finally{server.stop(0);}
+ }
 }

@@ -1,6 +1,6 @@
 # TeaSmart Chatbot RAG — vận hành local
 
-Trạng thái 17/10/2026: **PARTIAL**. Đã kiểm thử pipeline offline, MySQL/API và Chromium; chưa có API key nên **chưa nghiệm thu LLM thật**. Không thay thế Recommendation hoặc AI bệnh lá chè.
+Trạng thái 17/11/2026: **PARTIAL**. Chatbot A đã được nghiệm thu; tích hợp B có kiểm thử offline và Chrome mock. Lượt Gemini đầu trả NO_EVIDENCE, lượt hai lỗi provider; **chưa nghiệm thu câu trả lời LLM có căn cứ**. Không thay thế Recommendation hoặc AI bệnh lá chè.
 
 ## Kiến trúc
 
@@ -9,7 +9,7 @@ React `ChatbotWidget` → Spring `POST /api/chatbot/rag` (CUSTOMER) → một tr
 - **PRODUCTS/BESTSELLERS/REVIEWS**: `RagBusinessService` đọc catalog hoặc SQL cố định; trả dữ liệu thật, `llmUsed=false`. Không gửi dữ liệu kinh doanh/PII/JWT tới LLM.
 - **KNOWLEDGE**: Spring kết thúc transaction đọc trước khi gọi Python loopback. Python chunk/retrieve tài liệu → OpenAI-compatible chat completion → kiểm tra JSON, chunk ID và quote → reply + nguồn. Thiếu key/nguồn hợp lệ thì báo rõ, không tạo dữ liệu thay thế.
 
-`POST /api/chatbot/advice` và `/api/recommendations` giữ nguyên. UI có chế độ danh mục nhanh tường minh để dùng khi RAG chưa cấu hình.
+`POST /api/chatbot/advice` và `/api/recommendations` giữ nguyên. Widget duy nhất tự phân luồng theo intent, không có dropdown chế độ; Chatbot A vẫn dùng được khi RAG chưa cấu hình.
 
 ## Cấu hình
 
@@ -59,7 +59,7 @@ Python nội bộ `/health`, `/answer`; không publish Internet, không có endp
 
 ## Retrieval và dữ liệu
 
-- `rag_app/knowledge/sources.json`: năm bản tóm tắt có URL/cơ quan/ngày truy cập. Không scrape tự động khi chạy và không tải model/dataset.
+- `rag_app/knowledge/sources.json`: 11 bản tóm tắt đã xác minh (mục legacy chưa xác minh không index) có URL/cơ quan/ngày truy cập. Không scrape tự động khi chạy và không tải model/dataset.
 - Chunk tối đa 450 ký tự, overlap 70, ưu tiên ranh giới từ.
 - **VI_LEXICAL_HASH_2048_V1 là lexical hashing embedding**: unigram/bigram bỏ dấu, L2-normalized, cosine. SQLite lưu vector. **Không phải semantic embedding pretrained hoặc mô hình đã huấn luyện.** Synonym/negation và câu hỏi xa từ khóa còn hạn chế.
 - Retrieve tối đa 4 chunk, ngưỡng 0.08 là cấu hình heuristic chưa hiệu chỉnh trên tập đánh giá.
@@ -78,7 +78,7 @@ Chưa có semantic model, corpus trồng/chăm sóc/sâu bệnh chi tiết, benc
 ## Test
 
 ```powershell
-.\backend\mvnw.cmd -f backend/pom.xml test
+.\backend\mvnw.cmd -f backend/pom.xml "-Dtest=RagChatServiceTest,RagBusinessContextTest,ChatIntentClassifierTest,ChatConsultationTest,ChatTopicSwitchTest,TeaRecommendationEngineTest" test
 & .\ai-service\.venv\Scripts\python.exe -m pytest backend/ai-service/tests -q
 node --experimental-transform-types --test tests/*.test.ts
 npm run lint
@@ -89,14 +89,13 @@ Maven MySQL tests mặc định có thể SKIP khi chưa bật profile/biến te
 
 Bước nghiệm thu còn thiếu: có provider endpoint/model/key hợp lệ → script nhập ẩn → health llmConfigured=true → các câu hỏi kiến thức trên browser có sources → kiểm tra quote/ý nghĩa và tính trung thực → đánh giá ít nhất một tập câu hỏi gán nhãn thủ công. Chưa có kết quả thì không đánh dấu RAG/LLM PASS.
 
-## Chatbot integration (15/11/2026)
+## Chatbot integration (17/11/2026)
 
-- `/ai` opens TeaAdvisor; `/leaf` remains the separate leaf preview tool.
-- Full page and floating widget default to catalog mode (`allowLlm=false`). Product, budget and taste questions use the existing read-only catalog services, even when `RAG_ENABLED=false`.
-- Knowledge mode is an explicit user selection. It needs the backend flag, Python service and all three provider variables above. Missing configuration/provider errors remain visible, never replaced with a fabricated LLM answer.
-- Catalog data is current at request time, not a stock reservation. No payment, order or inventory writes are made by chat.
-- Verification: MySQL integration tests exercise catalog data and authentication; Chrome UI smoke uses intercepted synthetic API responses. Neither establishes a successful real provider call.
-- After configuring the provider privately, restart Python and the IntelliJ backend. On `/ai`, select knowledge mode and ask “Cách pha chè để giữ hương thơm?”. Verify the response says RAG + LLM and includes source links. Do not label this PASS until a real provider response is observed.
+- `/ai`, `/ai-tu-van` và `/leaf` mở classifier lá chè; tư vấn dùng widget nổi.
+- Widget không gửi lựa chọn mode; Backend tự phân luồng. Product, budget, gift, FAQ và bestseller không gọi LLM. Knowledge cần RAG_ENABLED và Python được cấu hình.
+- RAG_LLM_V1 phải có llmUsed=true và nguồn HTTPS đủ metadata; NO_EVIDENCE không được có citations. Thiếu bằng chứng không được gắn nhãn “Có tham khảo tài liệu”.
+- Chrome mock không chứng minh Gemini thật hoạt động. Không tạo Order, Payment hoặc reservation qua chat.
+- Xem [quy trình nghiệm thu có kiểm soát](../CHATBOT_DEMO_ACCEPTANCE.md) trước khi gọi provider. Hết ngân sách cũ 2/2; chưa được gọi thêm.
 
 ## Hội thoại tư vấn cập nhật 16/11/2026
 

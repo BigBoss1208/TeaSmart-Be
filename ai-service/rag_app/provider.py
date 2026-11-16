@@ -24,6 +24,7 @@ GEMINI_MODELS=frozenset({"gemini-3.5-flash-lite","gemini-2.5-flash"})
 logger=logging.getLogger("teasmart.rag.provider")
 
 class LlmProvider:
+    diagnostics_version="provider-errors-v1"
     def __init__(self):
         self.url=os.getenv("RAG_LLM_URL", "").strip(); self.model=os.getenv("RAG_LLM_MODEL", "").strip(); self.key=os.getenv("RAG_LLM_API_KEY", "").strip()
         self.provider=os.getenv("RAG_LLM_PROVIDER", "openai-compatible").strip().lower()

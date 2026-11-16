@@ -177,3 +177,15 @@ def test_oversized_response_is_distinct_from_transport_failure(gemini,caplog):
     with pytest.raises(RagFailure) as caught:LlmProvider().generate("tea",[],[])
     assert caught.value.code=="RAG_INVALID_OUTPUT" and caught.value.diagnostic_code=="RAG_PROVIDER_RESPONSE_TOO_LARGE"
     assert caught.value.upstream_status==200
+
+
+def test_health_exposes_loaded_diagnostic_version_without_provider_call(gemini):
+    from fastapi.testclient import TestClient
+    from rag_app.main import create_app
+    class Store:
+        def rebuild(self):pass
+    gemini.setattr(httpx,"Client",lambda **kwargs: (_ for _ in ()).throw(AssertionError("Provider network forbidden")))
+    with TestClient(create_app(LlmProvider(),Store())) as client:
+        health=client.get("/health").json()
+    assert health["providerDiagnosticsVersion"]=="provider-errors-v1"
+    assert health["providerCallsEnabled"] is False
