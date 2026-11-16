@@ -143,8 +143,22 @@ class TeaAdvisorMysqlTest {
         var r=call("POST","/api/chatbot/rag",customer,body);assertEquals(200,r.status);assertFalse(r.data.get("llmUsed").asBoolean());assertEquals("PRODUCTS",r.data.get("businessKind").asText());assertTrue(r.data.get("businessProducts").size()>0);
         for(var item:r.data.get("businessProducts")){assertTrue(item.get("price").asInt()<=300000);assertTrue(item.get("stockQuantity").asInt()>0);var row=jdbc.queryForMap("SELECT price,stock_quantity FROM products WHERE product_id=?",item.get("productId").asLong());assertEquals(((Number)row.get("stock_quantity")).longValue(),item.get("stockQuantity").asLong());assertEquals(((Number)row.get("price")).intValue(),item.get("price").asInt());}
         r=call("POST","/api/chatbot/rag",customer,Map.of("message","chè dưới 1đ","allowLlm",false));assertEquals(200,r.status);assertEquals(0,r.data.get("businessProducts").size());assertTrue(r.data.get("reply").asText().contains("chưa có"));
-        r=call("POST","/api/chatbot/rag",customer,Map.of("message","Cách pha chè","allowLlm",true));assertEquals(503,r.status);assertEquals("RAG_DISABLED",r.data.get("code").asText());
+        r=call("POST","/api/chatbot/rag",customer,Map.of("message","Cách pha chè","allowLlm",true));assertEquals(200,r.status);assertEquals("KNOWLEDGE_UNAVAILABLE",r.data.get("method").asText());assertFalse(r.data.get("llmUsed").asBoolean());
         assertEquals(401,call("POST","/api/chatbot/rag",null,body).status);assertEquals(403,call("POST","/api/chatbot/rag",admin,body).status);
+        for(String t:TABLES)assertEquals(before.get(t),jdbc.queryForList("SELECT * FROM `"+t+"`"));
+    }
+    @Test @Order(9) void contextualChatAndIntentRoutingReadOnly()throws Exception {
+        Map<String,List<Map<String,Object>>> before=new LinkedHashMap<>();for(String t:TABLES)before.put(t,jdbc.queryForList("SELECT * FROM `"+t+"`"));
+        for(String question:List.of("san pham nao hot nhat","che nao ban chay nhat","san pham best seller","sản phẩm nào bán chạy nhất","chè nào được mua nhiều nhất")){
+            var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question));assertEquals(200,r.status);assertEquals("BESTSELLERS",r.data.get("businessKind").asText());assertEquals(0,r.data.get("businessProducts").size());
+        }
+        for(String question:List.of("Bây giờ là mấy giờ?","Thời tiết hôm nay thế nào?","Hôm nay có mưa không?")){var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question));assertEquals(200,r.status);assertEquals("OUT_OF_SCOPE",r.data.get("businessKind").asText());assertFalse(r.data.get("llmUsed").asBoolean());}
+        for(int id:List.of(1,2,5))for(String question:List.of("Sản phẩm này là chè gì?","Công dụng của sản phẩm?","Giá bao nhiêu?","Còn hàng không?","Sản phẩm phù hợp với ai?","Có phù hợp làm quà không?")){
+            var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question,"productId",id));assertEquals(200,r.status);assertEquals("PRODUCT_DETAIL",r.data.get("businessKind").asText());var item=r.data.get("businessProducts").get(0);assertEquals(id,item.get("productId").asInt());assertEquals(id==5?0:10,item.get("stockQuantity").asInt());assertEquals(150000,item.get("price").asInt());
+        }
+        assertEquals(404,call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?","productId",4)).status);
+        assertEquals(400,call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?","productId",-1)).status);
+        var r=call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?"));assertEquals("CLARIFICATION",r.data.get("businessKind").asText());
         for(String t:TABLES)assertEquals(before.get(t),jdbc.queryForList("SELECT * FROM `"+t+"`"));
     }
     @AfterAll static void cleanup()throws Exception {
