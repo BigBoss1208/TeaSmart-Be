@@ -4,7 +4,7 @@ Trạng thái 17/10/2026: **PARTIAL**. Đã kiểm thử pipeline offline, MySQL
 
 ## Kiến trúc
 
-React `TeaAdvisor` → Spring `POST /api/chatbot/rag` (CUSTOMER) → một trong hai luồng:
+React `ChatbotWidget` → Spring `POST /api/chatbot/rag` (CUSTOMER) → một trong hai luồng:
 
 - **PRODUCTS/BESTSELLERS/REVIEWS**: `RagBusinessService` đọc catalog hoặc SQL cố định; trả dữ liệu thật, `llmUsed=false`. Không gửi dữ liệu kinh doanh/PII/JWT tới LLM.
 - **KNOWLEDGE**: Spring kết thúc transaction đọc trước khi gọi Python loopback. Python chunk/retrieve tài liệu → OpenAI-compatible chat completion → kiểm tra JSON, chunk ID và quote → reply + nguồn. Thiếu key/nguồn hợp lệ thì báo rõ, không tạo dữ liệu thay thế.
@@ -34,7 +34,7 @@ Trong PowerShell ở project root:
 
 Script hỏi endpoint/model và nhập key ẩn, chạy foreground port 8002; Ctrl+C để dừng và phục hồi biến Process trước đó. Dùng venv AI đang có; không tự cài package. Không dùng Client Secret Google hoặc JWT secret làm LLM key.
 
-Trong IntelliJ cấu hình Backend đã có, thêm RAG_ENABLED/RAG_SERVICE_URL rồi tự Run. Không tự chuyển database. Frontend dùng proxy `/api` như cũ. Truy cập `/ai`, đăng nhập CUSTOMER. ADMIN không dùng API tư vấn Customer.
+Trong IntelliJ cấu hình Backend đã có, thêm RAG_ENABLED/RAG_SERVICE_URL rồi tự Run. Không tự chuyển database. Frontend dùng proxy `/api` như cũ. Mở chatbot nổi trên website, đăng nhập CUSTOMER. `/ai` và `/ai-tu-van` hiện mở classifier lá chè. ADMIN không dùng API tư vấn Customer.
 
 ## API
 
@@ -53,7 +53,7 @@ Response giữ preferences/notices/recommendations của advisor và thêm:
 - embeddingMethod; llmUsed.
 - businessKind; businessProducts (ID, name, slug, giá, tồn, unitsSold hoặc averageRating/reviewCount).
 
-Lỗi: 400 validation/private input; 401/403 theo Security cũ; 503 RAG_DISABLED/RAG_NOT_CONFIGURED/provider unavailable/busy; 504 timeout. Không trả prompt, provider response gốc hoặc exception message.
+Lỗi: 400 validation/private input; 401/403 theo Security cũ; 200 KNOWLEDGE_UNAVAILABLE khi RAG chưa bật; 503 RAG_NOT_CONFIGURED/provider unavailable/busy; 504 timeout. Không trả prompt, provider response gốc hoặc exception message.
 
 Python nội bộ `/health`, `/answer`; không publish Internet, không có endpoint nhận SQL hoặc ghi MySQL. HTTP loopback chỉ thích hợp máy local tin cậy; deploy cần kiểm soát mạng/service authentication riêng.
 
@@ -97,3 +97,9 @@ Bước nghiệm thu còn thiếu: có provider endpoint/model/key hợp lệ �
 - Catalog data is current at request time, not a stock reservation. No payment, order or inventory writes are made by chat.
 - Verification: MySQL integration tests exercise catalog data and authentication; Chrome UI smoke uses intercepted synthetic API responses. Neither establishes a successful real provider call.
 - After configuring the provider privately, restart Python and the IntelliJ backend. On `/ai`, select knowledge mode and ask “Cách pha chè để giữ hương thơm?”. Verify the response says RAG + LLM and includes source links. Do not label this PASS until a real provider response is observed.
+
+## Hội thoại tư vấn cập nhật 16/11/2026
+
+Widget giữ preferences (ngân sách/khẩu vị/mục đích), tối đa 6 câu hỏi và tối đa 4 ID sản phẩm vừa gợi ý trong bộ nhớ phiên trang. Backend luôn đọc lại danh mục trước khi trả lời; ID từ client không phải bằng chứng về giá hoặc quyền truy cập. Nút làm mới và chuyển context sản phẩm xóa state. Refresh bắt đầu phiên tư vấn mới.
+
+“Dưới” là nhỏ hơn ngưỡng, “tối đa” bao gồm ngưỡng; “khoảng” dùng ±10% và phải thông báo cách hiểu. FAQ chỉ hướng dẫn tính năng đã đối chiếu source, không tự thao tác đơn hàng. Giá/tồn kho không gửi tới LLM.

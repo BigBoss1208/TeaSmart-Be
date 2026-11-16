@@ -21,7 +21,7 @@ public class RagChatService {
   var snapshot=business.snapshot(request);var advice=snapshot.advice();
   // Business facts never pass through an LLM: cards and figures originate in server-owned SQL.
   if(!snapshot.kind().equals("KNOWLEDGE")){
-   String reply=switch(snapshot.kind()){case "OUT_OF_SCOPE","GREETING","CLARIFICATION","PRODUCT_DETAIL"->advice.reply();case "BESTSELLERS"->snapshot.facts().isEmpty()?"Chưa có dữ liệu đơn DELIVERED và thanh toán PAID hợp lệ để xếp hạng.":"Top tối đa 5 sản phẩm theo tổng số gói của đơn DELIVERED, Payment PAID đã xác minh, không cần đối soát; toàn bộ thời gian. Dữ liệu tại thời điểm truy vấn.";case "REVIEWS"->snapshot.facts().isEmpty()?"Chưa có đánh giá APPROVED để xếp hạng.":"Xếp theo điểm trung bình từ đánh giá APPROVED; kèm số lượt đánh giá, không dùng đánh giá bị ẩn.";default->snapshot.facts().isEmpty()?"Hiện chưa có sản phẩm phù hợp. Bạn có thể đổi ngân sách hoặc nhu cầu; hệ thống không tự nới bộ lọc.":"Thông tin sản phẩm và tồn kho tại thời điểm truy vấn được hiển thị bên dưới. Giá và tồn kho sẽ được kiểm tra lại khi đặt hàng.";};
+   String reply=switch(snapshot.kind()){case "PRODUCT_SELECTION","CUSTOMER_SUPPORT","CONSULTATION","OUT_OF_SCOPE","GREETING","CLARIFICATION","PRODUCT_DETAIL"->advice.reply();case "BESTSELLERS"->snapshot.facts().isEmpty()?"Chưa có dữ liệu đơn DELIVERED và thanh toán PAID hợp lệ để xếp hạng.":"Top tối đa 5 sản phẩm theo tổng số gói của đơn DELIVERED, Payment PAID đã xác minh, không cần đối soát; toàn bộ thời gian. Dữ liệu tại thời điểm truy vấn.";case "REVIEWS"->snapshot.facts().isEmpty()?"Chưa có đánh giá APPROVED để xếp hạng.":"Xếp theo điểm trung bình từ đánh giá APPROVED; kèm số lượt đánh giá, không dùng đánh giá bị ẩn.";default->snapshot.facts().isEmpty()?"Hiện chưa có sản phẩm phù hợp. Bạn có thể đổi ngân sách hoặc nhu cầu; hệ thống không tự nới bộ lọc.":productReply(snapshot);};
    return new RagChatResponse("READ_ONLY_BUSINESS_V1",reply,advice.preferences(),advice.notices(),advice.recommendations(),List.of(),null,false,snapshot.kind(),snapshot.facts());
   }
   if(!enabled || Boolean.FALSE.equals(request.allowLlm()))return new RagChatResponse("KNOWLEDGE_UNAVAILABLE","Tôi chưa có câu trả lời đã xác minh cho câu hỏi này trong chế độ hiện tại. Tư vấn kiến thức RAG/LLM chưa được bật; tôi vẫn có thể giúp bạn tra cứu sản phẩm, giá và tồn kho.",advice.preferences(),List.of(),new vn.teasmart.backend.dto.response.TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of()),List.of(),null,false,"KNOWLEDGE",List.of());
@@ -45,4 +45,17 @@ public class RagChatService {
   public void onNext(List<ByteBuffer> chunks){for(var chunk:chunks){if(buffer.size()+chunk.remaining()>32768){subscription.cancel();result.completeExceptionally(new Failure("RAG_INVALID_OUTPUT",502));return;}byte[] bytes=new byte[chunk.remaining()];chunk.get(bytes);buffer.writeBytes(bytes);}subscription.request(1);}
   public void onError(Throwable error){result.completeExceptionally(error);}public void onComplete(){result.complete(buffer.toByteArray());}
  }
+ private static String productReply(RagBusinessService.Snapshot snapshot){
+  var q=snapshot.advice().preferences();
+  var format=java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("vi-VN"));
+  boolean exclusive=q.maxPrice()!=null&&q.maxPrice().remainder(java.math.BigDecimal.ONE).compareTo(new java.math.BigDecimal("0.99"))==0;
+  String budget=q.maxPrice()==null?"":" trong ngân sách "+(q.minPrice()==null?(exclusive?"dưới ":"tối đa "):"từ "+format.format(q.minPrice())+"đ đến ")+format.format(exclusive?q.maxPrice().add(new java.math.BigDecimal("0.01")):q.maxPrice())+"đ";
+  String reply="Dạ, mình tìm được "+snapshot.facts().size()+" sản phẩm còn hàng"+budget+" để bạn tham khảo bên dưới.";
+  if("GIFT".equals(q.purpose()))reply+=" Đây là gợi ý theo dữ liệu danh mục; thông tin bao bì quà biếu cần được cửa hàng xác nhận.";
+  if(q.strength()==null&&q.astringency()==null)reply+=" Bạn thích chè đậm truyền thống hay ít chát, dễ uống hơn ạ?";
+  if(snapshot.advice().notices().stream().anyMatch(n->n.contains("±10%")))reply+=" Mình hiểu khoảng ngân sách là ±10%; bạn có thể cho khoảng giá chính xác hơn.";
+  if(snapshot.advice().recommendations().items().stream().flatMap(i->i.reasons().stream()).anyMatch(r->r.startsWith("Chưa có dữ liệu:")))reply+=" Một số sản phẩm chưa có đủ thông tin khẩu vị; mình không khẳng định chúng đáp ứng đặc điểm chưa được ghi nhận.";
+  return reply;
+ }
+
 }

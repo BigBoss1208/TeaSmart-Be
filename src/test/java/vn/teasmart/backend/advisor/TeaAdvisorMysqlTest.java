@@ -92,7 +92,7 @@ class TeaAdvisorMysqlTest {
     }
     @Test @Order(3) void chatUsesRealPricesStocksBudgetAndConversationPreferences()throws Exception {
         var r=call("POST","/api/chatbot/advice",customer,Map.of("message","Tân Cương ít chát hậu ngọt dưới 200k"));assertEquals(200,r.status);
-        assertEquals("RULE_BASED_CATALOG_V1",r.data.get("method").stringValue());assertEquals(200000,r.data.get("preferences").get("maxPrice").asInt());
+        assertEquals("RULE_BASED_CATALOG_V1",r.data.get("method").stringValue());assertEquals(0,new java.math.BigDecimal("199999.99").compareTo(new java.math.BigDecimal(r.data.get("preferences").get("maxPrice").asText())));
         assertFalse(r.raw.contains("example.invalid"));assertFalse(r.raw.contains("password"));assertFalse(r.raw.contains(customer));
         for(var item:r.data.get("recommendations").get("items")) {
             long id=item.get("product").get("productId").asLong();assertTrue(List.of(1L,2L,9L).contains(id));

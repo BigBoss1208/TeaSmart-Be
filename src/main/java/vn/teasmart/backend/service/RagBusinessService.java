@@ -15,6 +15,34 @@ public class RagBusinessService {
  public Snapshot snapshot(RagChatRequest request){
   var intent=ChatIntentClassifier.classify(request.message(),request.productId()!=null);
   String text=TeaText.normalize(request.message());
+  String support=customerSupport(text);
+  if(support!=null)return direct("CUSTOMER_SUPPORT",support,List.of());
+  if(request.suggestedProductIds()!=null&&!request.suggestedProductIds().isEmpty()&&text.matches("(?s).*(thu hai|re hon|re nhat).*")){
+   var visible=catalog.findVisibleCatalog();
+   var prior=request.suggestedProductIds().stream().map(id->visible.stream().filter(p->id.equals(p.getProductId())).findFirst().orElse(null)).filter(Objects::nonNull).toList();
+   if(text.contains("thu hai")){
+    if(prior.size()<2)return direct("CLARIFICATION","Danh sách vừa rồi chưa có sản phẩm thứ hai. Bạn muốn mình tìm thêm theo ngân sách nào ạ?",List.of());
+    var p=prior.get(1);return direct("PRODUCT_DETAIL","Sản phẩm thứ hai là "+p.getName()+". Bạn có thể mở chi tiết bên dưới để xem thêm.",List.of(new BusinessProduct(p.getProductId(),p.getName(),p.getSlug(),p.getPrice(),p.getStockQuantity(),null,null,null)));
+   }
+   var pref=request.context()==null?TeaPreferenceRequest.empty():request.context();
+   var eligible=visible.stream().filter(p->p.getStockQuantity()>0&&(pref.regionId()==null||pref.regionId().equals(p.getRegion().getRegionId()))&&(pref.categoryId()==null||pref.categoryId().equals(p.getCategory().getCategoryId()))&&(pref.minPrice()==null||p.getPrice().compareTo(pref.minPrice())>=0)&&(pref.maxPrice()==null||p.getPrice().compareTo(pref.maxPrice())<=0)).sorted(Comparator.comparing(vn.teasmart.backend.entity.Product::getPrice).thenComparing(vn.teasmart.backend.entity.Product::getProductId));
+   var cap=prior.stream().map(vn.teasmart.backend.entity.Product::getPrice).min(java.math.BigDecimal::compareTo).orElse(null);
+   var facts=eligible.filter(p->!text.contains("re hon")||cap==null||p.getPrice().compareTo(cap)<0).limit(4).map(p->new BusinessProduct(p.getProductId(),p.getName(),p.getSlug(),p.getPrice(),p.getStockQuantity(),null,null,null)).toList();
+   return new Snapshot(new TeaAdviceResponse("RULE_BASED_CATALOG_V1",facts.isEmpty()?"Chưa có sản phẩm rẻ hơn đáp ứng tiêu chí cũ. Bạn muốn điều chỉnh ngân sách hoặc vùng chè không ạ?":"Đây là những sản phẩm có mức giá thấp nhất theo tiêu chí đang chọn.",pref,List.of(),new TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of())),"PRODUCT_SELECTION",facts);
+  }
+  String conversation=TeaText.normalize(String.join(" ",request.history()==null?List.of():request.history())+" "+request.message());
+  boolean gift=text.matches("(?s).*(lam qua|qua bieu|qua tang|bieu bo|tang bo).*") || request.context()!=null&&"GIFT".equals(request.context().purpose());
+  if(gift && request.productId()==null && !text.matches("(?s).*(may gio|thoi tiet|gia vang|troi.*mua).*")){
+   var giftAdvice=advisor.advise(new TeaAdviceRequest(request.message(),request.preferences(),request.context()));
+   var pref=giftAdvice.preferences();
+   String followup=null;
+   if(!conversation.matches("(?s).*(\\bbo\\b|\\bme\\b|nguoi than|thay co|doi tac|ban be).*")&&!text.contains("xem san pham"))followup="Dạ, bạn định tặng bố mẹ, người thân, thầy cô hay đối tác? Bạn muốn chọn trong ngân sách bao nhiêu ạ?";
+   else if(pref.maxPrice()==null&&pref.minPrice()==null&&!text.contains("xem san pham"))followup="Bạn muốn dành ngân sách khoảng bao nhiêu cho một gói chè làm quà ạ?";
+   else if(pref.strength()==null&&pref.astringency()==null&&!text.contains("xem san pham"))followup="Dạ, mình đã ghi nhận ngân sách làm quà. Người nhận thích chè đậm truyền thống hay vị nhẹ, ít chát hơn ạ?";
+   if(followup!=null)return new Snapshot(new TeaAdviceResponse(giftAdvice.method(),followup,pref,giftAdvice.notices(),new TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of())),"CONSULTATION",List.of());
+   intent=ChatIntentClassifier.Intent.PRODUCT_RECOMMENDATION;
+  }
+  if(request.context()!=null && text.matches("(?s).*(re hon|re nhat|thu hai|doi y|thich che|tang bo).*"))intent=ChatIntentClassifier.Intent.PRODUCT_SEARCH;
   if(intent==ChatIntentClassifier.Intent.OUT_OF_SCOPE)return direct("OUT_OF_SCOPE","Xin lỗi, tôi là trợ lý tư vấn của TeaSmart, chuyên hỗ trợ chè Thái Nguyên và sản phẩm. Tôi chưa hỗ trợ câu hỏi ngoài phạm vi này. Bạn muốn tìm hiểu loại chè nào?",List.of());
   if(intent==ChatIntentClassifier.Intent.GREETING)return direct("GREETING","Xin chào! Bạn muốn tìm chè theo khẩu vị, ngân sách hay tìm hiểu sản phẩm đang xem?",List.of());
   if(intent==ChatIntentClassifier.Intent.UNKNOWN)return direct("CLARIFICATION","Bạn có thể nói rõ loại chè hoặc nhu cầu muốn tìm hiểu không?",List.of());
@@ -37,6 +65,7 @@ public class RagBusinessService {
   var advice=advisor.advise(new TeaAdviceRequest(request.message(),request.preferences(),request.context()));
   if(intent==ChatIntentClassifier.Intent.BEST_SELLER)return new Snapshot(advice,"BESTSELLERS",reporting.bestsellers());
   if(text.matches("(?s).*(danh gia cao|nhieu sao|diem danh gia).*"))return new Snapshot(advice,"REVIEWS",reporting.topReviews());
+  if(request.context()!=null && (text.matches("(?s).*(re hon|re nhat|thu hai|doi y|thich che|tang bo).*")))intent=ChatIntentClassifier.Intent.PRODUCT_SEARCH;
   boolean business=Set.of(ChatIntentClassifier.Intent.PRODUCT_SEARCH,ChatIntentClassifier.Intent.PRODUCT_RECOMMENDATION,ChatIntentClassifier.Intent.PRODUCT_STOCK).contains(intent);
   if(business){
    var all=catalog.findVisibleCatalog();
@@ -46,6 +75,14 @@ public class RagBusinessService {
    return new Snapshot(advice,"PRODUCTS",advice.recommendations().items().stream().map(item->new BusinessProduct(item.product().productId(),item.product().name(),item.product().slug(),item.product().price(),item.stockQuantity(),null,null,null)).toList());
   }
   return new Snapshot(advice,"KNOWLEDGE",List.of());
+ }
+ static String customerSupport(String text){
+  if(text.matches("(?s).*(huy don|dat nham).*"))return "Bạn vào Tài khoản → Đơn hàng của tôi, mở chi tiết đơn và chọn Hủy nếu nút này khả dụng. Hiện chỉ đơn COD đang chờ xác nhận (PENDING), chưa thanh toán mới được hủy trực tiếp. Đơn đang giao hoặc đã thanh toán không hỗ trợ hủy bằng chức năng này. Mình chỉ hướng dẫn, không tự hủy đơn.";
+  if(text.matches("(?s).*(theo doi don|xem don|don hang.*(o dau|trang thai)|kiem tra.*don).*"))return "Bạn đăng nhập tài khoản đã đặt hàng, vào Tài khoản → Đơn hàng của tôi rồi mở chi tiết đơn để xem trạng thái. Mình chưa tra cứu đơn cá nhân trong cuộc trò chuyện này.";
+  if(text.matches("(?s).*(thanh toan|vnpay|tra tien).*"))return "TeaSmart hỗ trợ COD và VNPay Sandbox trong giao diện hiện tại. Chọn phương thức tại Checkout; VNPay chuyển sang cổng thanh toán. Quay lại hoặc đóng cổng không chứng minh đơn đã thanh toán hay đã hủy. Nếu kết quả chưa xác minh, dùng chức năng kiểm tra trạng thái và tránh gửi thanh toán lặp. Xem đơn đã tạo trong Tài khoản → Đơn hàng của tôi.";
+  if(text.matches("(?s).*(cach dat hang|lam.*mua che|muon dat hang|them.*gio|lam sao.*mua).*"))return "Bạn mở sản phẩm, chọn số lượng rồi Thêm vào giỏ hoặc Mua ngay. Tại Giỏ hàng, chọn sản phẩm cần mua; ở Checkout chọn địa chỉ nhận hàng, COD hoặc VNPay và xác nhận. Với VNPay, kiểm tra kết quả xác minh trước khi thử thanh toán lại.";
+  if(text.matches("(?s).*(danh gia san pham|binh luan|lam sao.*danh gia).*"))return "Bạn đăng nhập tài khoản đã mua sản phẩm, vào mục Đánh giá của tôi trong Tài khoản. Hệ thống kiểm tra sản phẩm thuộc đơn đã giao (DELIVERED); nội dung gửi lên chờ xét duyệt. Không phải mọi tài khoản đều có quyền đánh giá mọi sản phẩm.";
+  return null;
  }
  private Snapshot direct(String kind,String reply,List<BusinessProduct> facts){return new Snapshot(new TeaAdviceResponse("RULE_BASED_CATALOG_V1",reply,TeaPreferenceRequest.empty(),List.of(),new TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of())),kind,facts);}
 }

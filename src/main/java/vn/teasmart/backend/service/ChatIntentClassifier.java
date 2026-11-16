@@ -14,6 +14,7 @@ public final class ChatIntentClassifier {
         boolean tea=has(t,"\\b(che|tra|tan cuong|la bang|trai cai|thai nguyen)\\b");
         if(has(t,"viet.*code|doan code|lap trinh|giai.*bai toan|bong da|gia vang|may gio|tin tuc") || !tea&&has(t,"thoi tiet|troi.*mua"))return Intent.OUT_OF_SCOPE;
         if(has(t,"best ?seller|ban chay|hot|mua nhieu|nhieu nguoi mua|yeu thich nhat|top 5"))return Intent.BEST_SELLER;
+        if(has(t,"co.*(che|tra)|muon mua|tim che|^che tan cuong$")&&!has(t,"dac biet|cach pha|bao quan"))return Intent.PRODUCT_SEARCH;
         if(has(t,"so sanh|khac.*nhau|khac.*the nao"))return productContext||has(t,"san pham")?Intent.PRODUCT_COMPARISON:Intent.TEA_KNOWLEDGE;
         if(has(t,"pha che|pha tra|nen pha|nhiet do|ham che|ham tra"))return Intent.BREWING_GUIDE;
         if(productContext && has(t,"nguon goc|lam qua|qua bieu|qua tang|cong dung|vi nhu|khoi luong|phu hop voi ai"))return Intent.PRODUCT_DETAIL;

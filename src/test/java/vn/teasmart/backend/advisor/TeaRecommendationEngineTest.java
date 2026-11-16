@@ -48,7 +48,7 @@ class TeaRecommendationEngineTest {
     }
     @Test void intentHandlesPlainVietnameseAndMillionDecimalAndDongGrouping() {
         assertEquals(1500000,TeaIntentParser.parse("dam vi toi da 1,5 trieu",null,List.of()).preferences().maxPrice().intValueExact());
-        assertEquals(250000,TeaIntentParser.parse("dưới 250.000 đồng",null,List.of()).preferences().maxPrice().intValueExact());
+        assertEquals(new BigDecimal("249999.99"),TeaIntentParser.parse("dưới 250.000 đồng",null,List.of()).preferences().maxPrice());
         assertNull(TeaIntentParser.parse("tôi 35 tuổi",null,List.of()).preferences().maxPrice());
     }
     @Test void explicitFiltersOverrideTextAndInvalidRangesNotGuessed() {
@@ -76,6 +76,13 @@ class TeaRecommendationEngineTest {
         var p=product(1,1,1,100000,null,null);
         var r=TeaRecommendationEngine.rank(List.of(p),null,TeaPreferenceRequest.empty(),4,"null");
         assertTrue(r.fallback());assertEquals(0,r.items().get(0).score().signum());
+    }
+
+    @Test void budgetOperatorsKeepTheirDifferentMeanings(){
+        assertEquals(new BigDecimal("299999.99"),TeaIntentParser.parse("chè dưới 300K",null,List.of()).preferences().maxPrice());
+        assertEquals(300000,TeaIntentParser.parse("tối đa 300K",null,List.of()).preferences().maxPrice().intValueExact());
+        var around=TeaIntentParser.parse("khoảng 300K",null,List.of()).preferences();assertEquals(270000,around.minPrice().intValueExact());assertEquals(330000,around.maxPrice().intValueExact());
+        var range=TeaIntentParser.parse("từ 100K đến 200K",null,List.of()).preferences();assertEquals(100000,range.minPrice().intValueExact());assertEquals(200000,range.maxPrice().intValueExact());
     }
 
 }

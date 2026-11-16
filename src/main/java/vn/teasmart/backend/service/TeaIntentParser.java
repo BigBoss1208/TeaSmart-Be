@@ -32,7 +32,8 @@ public final class TeaIntentParser {
             min=amounts.get(0);max=amounts.get(1);
         } else if(amounts.size()==1) {
             if(text.contains("tren ")||text.contains("tu ")&&!text.contains("toi da")) min=amounts.get(0);
-            else max=amounts.get(0);
+            else if(text.contains("khoang ")) {min=amounts.get(0).multiply(new BigDecimal("0.9")).setScale(2);max=amounts.get(0).multiply(new BigDecimal("1.1")).setScale(2);notices.add("Khoảng ngân sách được hiểu là ±10%; bạn có thể nêu khoảng giá chính xác.");}
+            else max=text.contains("duoi ")?amounts.get(0).subtract(new BigDecimal("0.01")):amounts.get(0);
         } else if(!amounts.isEmpty()) notices.add("Ngân sách chưa rõ; hãy dùng ô giá tối thiểu/tối đa.");
         if(min!=null&&max!=null&&min.compareTo(max)>0) { min=null;max=null;notices.add("Khoảng giá trong tin nhắn chưa hợp lệ; hãy nhập ngân sách bằng bộ lọc."); }
         Long category=null,region=null; int categoryLength=0,regionLength=0;
@@ -42,7 +43,7 @@ public final class TeaIntentParser {
             if(r.length()>regionLength&&containsName(text,r)) {region=p.getRegion().getRegionId();regionLength=r.length();}
         }
         Integer strength=null,astringency=null,aroma=null,aftertaste=null;
-        if(text.contains("dam vi")||text.contains("dam da")||text.contains("vi dam"))strength=4;
+        if(text.contains("dam vi")||text.contains("dam da")||text.contains("vi dam")||text.contains("che dam"))strength=4;
         if(text.contains("nhe vi")||text.contains("vi nhe")||text.contains("khong dam")||text.matches(".*khong (thich |muon )?dam vi.*"))strength=2;
         if(text.contains("it chat")||text.contains("khong chat")||text.contains("chat nhe"))astringency=1;
         else if(text.contains("chat dam")||text.contains("vi chat"))astringency=4;
@@ -50,7 +51,7 @@ public final class TeaIntentParser {
         if(text.contains("hau ngot"))aftertaste=4;
         if(text.contains("khong thom")||text.contains("it thom"))aroma=1;
         if(text.contains("khong hau ngot"))aftertaste=1;
-        String purpose=text.contains("lam qua")||text.contains("qua tang")?"GIFT":
+        String purpose=text.contains("lam qua")||text.contains("qua tang")||text.contains("bieu")||text.contains("tang bo")?"GIFT":
                 text.contains("hang ngay")||text.contains("moi ngay")?"DAILY":null;
         if(text.contains("chua benh")||text.contains("dieu tri"))notices.add("Trợ lý không tư vấn điều trị bệnh hoặc cam kết tác dụng sức khỏe.");
         var result=new TeaPreferenceRequest(choose(explicit.categoryId(),category),choose(explicit.regionId(),region),
