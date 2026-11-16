@@ -24,10 +24,10 @@ def test_vectors_are_normalized_deterministic_and_accent_insensitive():
 def test_chunking_and_rebuild_are_bounded_and_repeatable(store):
     assert all(len(x)<=450 for x in chunks("chè "*400))
     first=store.search("bảo quản trà khô ẩm oxy");store.rebuild();assert store.search("bảo quản trà khô ẩm oxy")==first
-@pytest.mark.parametrize("query,source",[("pha trà nước thời gian hãm đắng","brewing"),("bảo quản trà khô ẩm oxy","brewing"),("Tân Cương La Bằng Trại Cài","tn-regions"),("thu hái làm héo diệt men","tn-culture")])
+@pytest.mark.parametrize("query,source",[("pha trà nước thời gian hãm đắng","brewing"),("bảo quản trà khô ẩm oxy","tea-storage"),("Tân Cương La Bằng Trại Cài","tn-regions"),("thu hái làm héo diệt men","tn-culture")])
 def test_retrieval_returns_real_source(store,query,source):
     assert source in [r["sourceId"] for r in store.search(query)]
-    assert all(r["url"].startswith("https://") and r["accessedAt"]=="2026-11-16" for r in store.search(query))
+    assert all(r["url"].startswith("https://") and r["accessedAt"]==next(d["accessedAt"] for d in json.loads(SOURCES.read_text(encoding="utf-8")) if d["id"]==r["sourceId"]) for r in store.search(query))
 def test_service_roundtrip_with_explicit_fake_provider(store):
     provider=FakeProvider()
     with TestClient(create_app(provider,store)) as client:
@@ -63,9 +63,32 @@ def test_unverified_legacy_note_is_not_indexed(store):
     import sqlite3
     with sqlite3.connect(store.path) as db:
         assert db.execute("SELECT COUNT(*) FROM chunks WHERE source_id='plant-health'").fetchone()[0] == 0
-        assert db.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 10
+        assert db.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 11
 
 def test_invalid_source_is_rejected_before_replacing_index(tmp_path):
     path=tmp_path/"invalid.json"
     path.write_text(json.dumps([{"id":"x","title":"x","url":"http://invalid","publisher":"x","accessedAt":"2026-11-16","text":"x"}]),encoding="utf-8")
     with pytest.raises(ValueError): VectorStore(tmp_path/"i.db",path).rebuild()
+
+
+def test_thai_nguyen_brewing_retrieves_local_practice_not_region_or_processing(store):
+    hits=store.search("Cách pha chè Thái Nguyên như thế nào?")
+    assert "tn-brewing-practice" in [p["sourceId"] for p in hits]
+    assert not {"tn-regions-other","green-processing","green-types"}.intersection(p["sourceId"] for p in hits)
+
+def test_empty_generation_is_distinct_from_empty_retrieval(store):
+    passages=store.search("Cách pha chè Thái Nguyên")
+    result=validate_output({"paragraphs":[]},passages)
+    assert result["evidenceStatus"]=="MODEL_ABSTAINED" and result["llmUsed"] is True
+    assert result["sources"]==[] and result["method"]=="RAG_NO_EVIDENCE"
+
+def test_supported_partial_answer_cites_only_its_actual_source(store):
+    passages=store.search("Cách pha chè Thái Nguyên")
+    p=next(p for p in passages if p["sourceId"]=="tn-brewing-practice")
+    result=validate_output({"paragraphs":[{"text":"Bạn có thể làm nóng trà cụ và tráng ấm trước khi pha. Nguồn không đưa một công thức nhiệt độ chung.","sourceId":p["id"],"quote":"làm nóng trà cụ và tráng ấm bằng nước sôi"}]},passages)
+    assert result["method"]=="RAG_LLM_V1" and result["evidenceStatus"]=="CITED_EVIDENCE"
+    assert [s["id"] for s in result["sources"]]==[p["id"]]
+
+def test_unrelated_passage_cannot_be_cited_with_a_brewing_quote(store):
+    p=store.search("Tân Cương La Bằng Trại Cài")[0]
+    with pytest.raises(RagFailure):validate_output({"paragraphs":[{"text":"Pha chè ở 80 độ.","sourceId":p["id"],"quote":"làm nóng trà cụ và tráng ấm"}]},[p])

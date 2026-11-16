@@ -75,3 +75,21 @@ def test_unapproved_model_never_silently_replaces_selected_model(gemini):
     gemini.setenv("RAG_LLM_CALLS_ENABLED","true")
     with pytest.raises(RagFailure) as error:LlmProvider().generate("chè",[],[])
     assert error.value.code=="RAG_PROVIDER_CONFIG_INVALID"
+
+
+def test_retrieved_passages_reach_provider_and_paragraphs_survive_parser(gemini):
+    passage={"id":"local:0","title":"Local brewing","text":"Warm the teapot before brewing."}
+    result={"paragraphs":[{"text":"Warm the teapot.","sourceId":"local:0","quote":"Warm the teapot"}]}
+    def handler(request):
+        body=json.loads(request.content)
+        context=json.loads(body["messages"][1]["content"])
+        assert context["passages"]==[passage]
+        return httpx.Response(200,json={"choices":[{"message":{"content":json.dumps(result)}}]})
+    transport(gemini,handler)
+    assert LlmProvider().generate("How to brew?",[],[passage])==result
+
+@pytest.mark.parametrize("envelope",[{}, {"choices":[]}, {"choices":[{"message":{"content":"not json"}}]}])
+def test_malformed_provider_envelope_is_not_reported_as_no_evidence(gemini,envelope):
+    transport(gemini,lambda request:httpx.Response(200,json=envelope))
+    with pytest.raises(RagFailure) as error:LlmProvider().generate("tea",[],[])
+    assert error.value.code=="RAG_INVALID_OUTPUT" and error.value.status==502

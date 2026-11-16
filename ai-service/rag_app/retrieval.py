@@ -52,11 +52,21 @@ class VectorStore:
                 db.execute("INSERT INTO documents VALUES (?,?)",(doc["id"],json.dumps({k:v for k,v in doc.items() if k!="text"},ensure_ascii=False)))
                 for i,text in enumerate(chunks(doc["text"])):
                     db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?)",(f"{doc['id']}:{i}",doc["id"],doc["title"],doc["url"],doc["publisher"],doc["accessedAt"],text,json.dumps(embed(doc["title"]+" "+" ".join(doc.get("topics",[]))+" "+text)),MODEL))
+        self.document_count=len(documents)
+        self.knowledge_revision=hashlib.sha256(self.sources.read_bytes()).hexdigest()[:12]
         return len(documents)
     def search(self, query, limit=4):
         q=embed(query); result=[]
+        topic=None
+        normalized_query=normalized(query)
+        if re.search(r"\b(pha|ham|nhiet do)\b",normalized_query): topic="pha che"
+        elif "bao quan" in normalized_query: topic="bao quan"
+        with sqlite3.connect(self.path) as metadata_db:
+            topics={id:json.loads(meta).get("topics",[]) for id,meta in metadata_db.execute("SELECT id,metadata FROM documents")}
+
         with sqlite3.connect(self.path) as db:
             for row in db.execute("SELECT id,source_id,title,url,publisher,accessed_at,text,embedding FROM chunks WHERE model=?",(MODEL,)):
+                if topic and topic not in [normalized(t) for t in topics.get(row[1],[])]: continue
                 vector=json.loads(row[7]); score=sum(value*vector.get(key,0) for key,value in q.items())
                 if score>=0.08: result.append({"id":row[0],"sourceId":row[1],"title":row[2],"url":row[3],"publisher":row[4],"accessedAt":row[5],"text":row[6],"score":score})
         return sorted(result,key=lambda item:(-item["score"],item["id"]))[:limit]
