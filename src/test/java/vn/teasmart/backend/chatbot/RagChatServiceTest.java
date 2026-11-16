@@ -27,4 +27,12 @@ class RagChatServiceTest {
  @Test void oversizedPythonBodyIsRejected()throws Exception{
   withPythonResponse("x".repeat(32769),200,service->{var error=assertThrows(RagChatService.Failure.class,()->service.answer(new RagChatRequest("cách pha trà",null,null,List.of("tôi thích chè nhẹ"))));assertEquals("RAG_INVALID_OUTPUT",error.code);});
  }
- @Test void widgetCanBlockPaidLlmBeforeAnyHttpCall(){var business=mock(RagBusinessService.class);var request=new RagChatRequest("cách pha trà",null,null,List.of(),false);when(business.snapshot(request)).thenReturn(new RagBusinessService.Snapshot(advice(),"KNOWLEDGE",List.of()));var result=new RagChatService(business,true,"http://127.0.0.1:1").answer(request);assertEquals("KNOWLEDGE_UNAVAILABLE",result.method());assertFalse(result.llmUsed());}}
+ @Test void widgetCanBlockPaidLlmBeforeAnyHttpCall(){var business=mock(RagBusinessService.class);var request=new RagChatRequest("cách pha trà",null,null,List.of(),false);when(business.snapshot(request)).thenReturn(new RagBusinessService.Snapshot(advice(),"KNOWLEDGE",List.of()));var result=new RagChatService(business,true,"http://127.0.0.1:1").answer(request);assertEquals("KNOWLEDGE_UNAVAILABLE",result.method());assertFalse(result.llmUsed());}
+ @Test void automaticRequestsUseIntentWithoutClientMode(){
+  var business=mock(RagBusinessService.class);var service=new RagChatService(business,true,"http://127.0.0.1:1");
+  for(String kind:List.of("PRODUCTS","CONSULTATION","CUSTOMER_SUPPORT","BESTSELLERS","OUT_OF_SCOPE","PRODUCT_DETAIL")){
+   var request=new RagChatRequest(kind,null,null,List.of());when(business.snapshot(request)).thenReturn(new RagBusinessService.Snapshot(advice(),kind,List.of()));
+   var result=service.answer(request);assertEquals(kind,result.businessKind());assertFalse(result.llmUsed());
+  }
+ }
+}
