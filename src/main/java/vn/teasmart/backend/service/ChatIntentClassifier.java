@@ -11,6 +11,16 @@ public final class ChatIntentClassifier  {
     private static boolean has(String text,String pattern)  {
         return text.matches("(?s).*(?:"+pattern+").*");
     }
+    static boolean referencesCurrentProduct(String text) {
+        return has(text, "\\b(san pham|che|tra|loai|cai) (nay|(?:(?:ma )?toi |ban )?(?:dang )?(?:mo|xem))\\b"
+                + "|\\b(loai|cai) do\\b");
+    }
+
+    static boolean isCurrentProductFollowUp(String text) {
+        return text.replaceAll("[^a-z0-9 ]", "").trim()
+                .matches("(gia(?: la)? bao nhieu|bao nhieu tien|con hang(?: khong| ko)?|het hang(?: chua| khong)?|ton kho(?: bao nhieu)?)( a)?");
+    }
+
     public static Intent classify(String input,boolean productContext)  {
         String t=TeaText.normalize(input).replaceAll("[^a-z0-9 ]"," ").replaceAll(" +"," ").trim();
         if(t.isBlank())return Intent.UNKNOWN;
@@ -21,6 +31,11 @@ public final class ChatIntentClassifier  {
         if(has(t,"co.*(che|tra)|muon mua|tim che|^che tan cuong$")&&!has(t,"dac biet|cach pha|bao quan"))return Intent.PRODUCT_SEARCH;
         if(has(t,"so sanh|khac.*nhau|khac.*the nao"))return productContext||has(t,"san pham")?Intent.PRODUCT_COMPARISON:Intent.TEA_KNOWLEDGE;
         if(has(t,"pha che|pha tra|nen pha|nhiet do|ham che|ham tra"))return Intent.BREWING_GUIDE;
+        if(referencesCurrentProduct(t)) {
+            if(has(t,"con hang|het hang|ton kho"))return Intent.PRODUCT_STOCK;
+            if(has(t,"gia|bao nhieu tien")&&!has(t,"danh gia"))return Intent.PRODUCT_PRICE;
+            return Intent.PRODUCT_DETAIL;
+        }
         if(productContext && has(t,"nguon goc|lam qua|qua bieu|qua tang|cong dung|vi nhu|khoi luong|phu hop voi ai"))return Intent.PRODUCT_DETAIL;
         if(has(t,"danh gia cao|nhieu sao|noi bat|moi nhat"))return Intent.PRODUCT_SEARCH;
         if(has(t,"doi che|vung che|o dau|nguon goc|dia ly|khi hau"))return tea?Intent.TEA_ORIGIN:Intent.OUT_OF_SCOPE;

@@ -48,8 +48,19 @@ public class ProductService {
     }
 
     public ProductResponse getPublicProductBySlug(String slug) {
-        if (sellerFoundationEnabled) {
-            var rows = jdbc.query(publicProductSelect() + " AND p.slug=?", (r, n) -> new ProductResponse(
+        if (sellerFoundationEnabled) return findPublicProductWithSellers("p.slug", slug);
+        return toPublicProduct(productRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found.")));
+    }
+
+    public ProductResponse getPublicProductById(Long productId) {
+        if (sellerFoundationEnabled) return findPublicProductWithSellers("p.product_id", productId);
+        return toPublicProduct(productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found.")));
+    }
+
+    private ProductResponse findPublicProductWithSellers(String column, Object value) {
+        var rows = jdbc.query(publicProductSelect() + " AND " + column + "=?", (r, n) -> new ProductResponse(
                     r.getLong("product_id"), r.getString("name"), r.getString("slug"),
                     r.getString("description"), r.getBigDecimal("price"), r.getLong("stock_quantity"),
                     r.getLong("weight_grams"), r.getString("image_url"), r.getString("taste_note"),
@@ -57,13 +68,12 @@ public class ProductService {
                     r.getObject("aroma_level", Integer.class), r.getObject("aftertaste_level", Integer.class),
                     r.getLong("category_id"), r.getString("category_name"),
                     r.getLong("region_id"), r.getString("region_name"),
-                    r.getLong("store_id"), r.getString("store_name"), r.getObject("shop_id",Long.class), r.getString("shop_name")), slug);
-            if (rows.isEmpty()) throw new ResourceNotFoundException("Product not found.");
-            return rows.get(0);
-        }
-        Product product = productRepository.findBySlug(slug)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found."));
+                    r.getLong("store_id"), r.getString("store_name"), r.getObject("shop_id",Long.class), r.getString("shop_name")), value);
+        if (rows.isEmpty()) throw new ResourceNotFoundException("Product not found.");
+        return rows.get(0);
+    }
 
+    private ProductResponse toPublicProduct(Product product) {
         if (!ACTIVE.equals(product.getStatus())
                 || !ACTIVE.equals(product.getCategory().getStatus())
                 || !ACTIVE.equals(product.getRegion().getStatus())

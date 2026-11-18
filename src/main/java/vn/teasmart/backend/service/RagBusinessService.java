@@ -11,10 +11,12 @@ public class RagBusinessService  {
     private final TeaAdvisorService advisor;
     private final TeaCatalogRepository catalog;
     private final ChatbotReadRepository reporting;
-    public RagBusinessService(TeaAdvisorService advisor,TeaCatalogRepository catalog,ChatbotReadRepository reporting) {
+    private final ProductService products;
+    public RagBusinessService(TeaAdvisorService advisor,TeaCatalogRepository catalog,ChatbotReadRepository reporting,ProductService products) {
         this.advisor=advisor;
         this.catalog=catalog;
         this.reporting=reporting;
+        this.products=products;
     }
     public record Snapshot(TeaAdviceResponse advice,String kind,List<BusinessProduct> facts) {
     }
@@ -28,6 +30,13 @@ public class RagBusinessService  {
         if(intent==ChatIntentClassifier.Intent.GREETING)return direct("GREETING","Chào bạn! 🍃 Mình là TeaSmart AI. Hôm nay bạn muốn tìm chè theo khẩu vị, ngân sách hay cần mình hỗ trợ đặt hàng ạ?",List.of());
         String support=ChatSupportReplies.answer(text);
         if(support!=null)return direct("CUSTOMER_SUPPORT",support,List.of());
+        if ((ChatIntentClassifier.referencesCurrentProduct(text) ||
+                request.productId()!=null && ChatIntentClassifier.isCurrentProductFollowUp(text))
+                && !TeaCatalogTopic.knowledge(text)
+                && Set.of(ChatIntentClassifier.Intent.PRODUCT_DETAIL, ChatIntentClassifier.Intent.PRODUCT_PRICE,
+                        ChatIntentClassifier.Intent.PRODUCT_STOCK, ChatIntentClassifier.Intent.PRODUCT_CONTEXT).contains(intent)) {
+            return currentProduct(request.productId(), intent, text);
+        }
         if(request.suggestedProductIds()!=null&&!request.suggestedProductIds().isEmpty()&&text.matches("(?s).*(thu hai|re hon|re nhat).*")) {
             var visible=catalog.findVisibleCatalog();
             var prior=request.suggestedProductIds().stream().map(id->visible.stream().filter(p->id.equals(p.getProductId())).findFirst().orElse(null)).filter(Objects::nonNull).toList();
@@ -44,7 +53,7 @@ public class RagBusinessService  {
         }
         String conversation=TeaText.normalize(String.join(" ",request.history()==null?List.of():request.history())+" "+request.message());
         boolean gift=text.matches("(?s).*(lam qua|qua bieu|qua tang|bieu bo|tang bo).*") || previous!=null&&"GIFT".equals(previous.purpose());
-        if(gift && request.productId()==null && !Set.of(ChatIntentClassifier.Intent.BEST_SELLER,ChatIntentClassifier.Intent.BREWING_GUIDE,ChatIntentClassifier.Intent.TEA_KNOWLEDGE,ChatIntentClassifier.Intent.TEA_ORIGIN,ChatIntentClassifier.Intent.GREETING).contains(intent) && intent!=ChatIntentClassifier.Intent.OUT_OF_SCOPE) {
+        if(gift && (request.productId()==null || intent!=ChatIntentClassifier.Intent.PRODUCT_DETAIL) && !Set.of(ChatIntentClassifier.Intent.BEST_SELLER,ChatIntentClassifier.Intent.BREWING_GUIDE,ChatIntentClassifier.Intent.TEA_KNOWLEDGE,ChatIntentClassifier.Intent.TEA_ORIGIN,ChatIntentClassifier.Intent.GREETING).contains(intent) && intent!=ChatIntentClassifier.Intent.OUT_OF_SCOPE) {
             var giftAdvice=advisor.adviseChat(new TeaAdviceRequest(request.message(),request.preferences(),previous));
             var pref=giftAdvice.preferences();
             String followup=null;
@@ -60,7 +69,7 @@ public class RagBusinessService  {
         if(intent==ChatIntentClassifier.Intent.UNKNOWN)return direct("CLARIFICATION","Bạn có thể nói rõ loại chè hoặc nhu cầu muốn tìm hiểu không?",List.of());
         // Named tea lines are catalog questions unless an explicit knowledge task owns routing.
         boolean comparison=text.matches("(?s).*(so sanh|khac.*nhau|khac.*the nao|khac.*gi).*");
-        if(comparison && request.productId()==null) {
+        if(comparison) {
             var parts=TeaCatalogTopic.comparison(request.message(),catalog.findVisibleCatalog());
             if(parts.size()>=2)return direct("PRODUCT_DETAIL","Mình đối chiếu theo mô tả danh mục TeaSmart nhé.\n"+String.join("\n",parts)+"\nĐây là thông tin từng dòng trong danh mục, không có nghĩa dòng nào luôn ngon hơn. Bạn muốn so sánh thêm theo ngân sách hay khẩu vị ạ?",List.of());
         }
@@ -83,19 +92,9 @@ public class RagBusinessService  {
             }
         }
         boolean detail=Set.of(ChatIntentClassifier.Intent.PRODUCT_DETAIL,ChatIntentClassifier.Intent.PRODUCT_CONTEXT,ChatIntentClassifier.Intent.PRODUCT_PRICE,ChatIntentClassifier.Intent.PRODUCT_STOCK).contains(intent);
-        if(detail && request.productId()!=null) {
-            var product=catalog.findVisibleCatalog().stream().filter(p->request.productId().equals(p.getProductId())).findFirst().orElseThrow(()->new vn.teasmart.backend.exception.ResourceNotFoundException("Sản phẩm không còn được phép hiển thị."));
-            String reply=product.getName()+" — "+java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("vi-VN")).format(product.getPrice())+" ₫; "+product.getWeightGrams()+" g; còn "+product.getStockQuantity()+" gói tại thời điểm truy vấn.";
-            if(intent==ChatIntentClassifier.Intent.PRODUCT_DETAIL) {
-                if(text.contains("cong dung"))reply+=" Chưa có bằng chứng xác thực về công dụng y tế riêng của sản phẩm này. Không dùng chè thay cho tư vấn hoặc điều trị y tế.";
-                else if(text.contains("lam qua")||text.contains("qua bieu")||text.contains("qua tang"))reply+=" Danh mục chưa có thông tin xác minh về bao bì và mức độ phù hợp làm quà của sản phẩm này. Bạn nên xem quy cách hoặc hỏi cửa hàng trước khi chọn làm quà.";
-                else if(text.contains("phu hop voi ai"))reply+=" Danh mục chưa xác định nhóm người dùng phù hợp cho sản phẩm này. Không thể suy ra mức độ phù hợp với sức khỏe chỉ từ tên hoặc giá sản phẩm.";
-                else if(text.contains("che gi")||text.contains("tra gi")||text.contains("loai che"))reply+=" Phân loại trong danh mục: "+(product.getCategory()==null?"chưa bổ sung":product.getCategory().getName())+". Đây là phân loại của cửa hàng, không phải chứng nhận chất lượng.";
-                else reply+=" Hương vị theo dữ liệu sản phẩm: "+(product.getTasteNote()==null||product.getTasteNote().isBlank()?"chưa bổ sung":product.getTasteNote())+". Vùng chè trong danh mục: "+product.getRegion().getName()+". Đây là thông tin danh mục, không phải chứng nhận xuất xứ.";
-            }
-            return direct("PRODUCT_DETAIL",reply,List.of(new BusinessProduct(product.getProductId(),product.getName(),product.getSlug(),product.getPrice(),product.getStockQuantity(),null,null,null)));
-        }
-        if(detail && (intent!=ChatIntentClassifier.Intent.PRODUCT_STOCK || text.matches("(?s).*(nay|dang xem|con hang ko|con hang khong).*")))return direct("CLARIFICATION","Bạn muốn hỏi sản phẩm nào? Hãy mở chi tiết sản phẩm rồi hỏi lại để tôi kiểm tra đúng giá và tồn kho.",List.of());
+        if(detail && request.productId()!=null && intent!=ChatIntentClassifier.Intent.PRODUCT_PRICE && intent!=ChatIntentClassifier.Intent.PRODUCT_STOCK)
+            return currentProduct(request.productId(), intent, text);
+        if(detail && (intent!=ChatIntentClassifier.Intent.PRODUCT_STOCK || text.matches("(?s).*(nay|dang xem|con hang ko|con hang khong).*")))return askForProduct();
         if(intent==ChatIntentClassifier.Intent.PRODUCT_COMPARISON)return direct("CLARIFICATION","Bạn muốn so sánh những sản phẩm nào? Hãy cho biết rõ tên các sản phẩm; tôi chưa có đủ thông tin để so sánh chính xác.",List.of());
         if(text.matches("(?s).*(noi bat|moi nhat).*"))return direct("CLARIFICATION","Sản phẩm nổi bật hoặc mới nhất không đồng nghĩa với bán chạy. Bạn muốn xem doanh số hay tìm theo ngân sách, khẩu vị?",List.of());
         var advice=advisor.adviseChat(new TeaAdviceRequest(request.message(),request.preferences(),previous));
@@ -112,6 +111,51 @@ public class RagBusinessService  {
         }
         return new Snapshot(advice,"KNOWLEDGE",List.of());
     }
+    private Snapshot askForProduct() {
+        return direct("CLARIFICATION","Bạn muốn hỏi sản phẩm nào ạ? Bạn có thể mở trang chi tiết của sản phẩm đó rồi hỏi mình nhé.",List.of());
+    }
+
+    private Snapshot currentProduct(Long id, ChatIntentClassifier.Intent intent, String text) {
+        if (id == null) return askForProduct();
+        ProductResponse product;
+        try {
+            product = products.getPublicProductById(id);
+        } catch (vn.teasmart.backend.exception.ResourceNotFoundException missing) {
+            return direct("CLARIFICATION","Mình chưa tìm thấy sản phẩm này trong danh mục công khai. Bạn muốn hỏi về sản phẩm nào khác ạ?",List.of());
+        }
+
+        String price = product.price() == null ? "Danh mục chưa có giá."
+                : "Giá hiện tại là " + java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("vi-VN")).format(product.price()) + " ₫.";
+        String stock = product.stockQuantity() == null ? "Danh mục chưa có thông tin tồn kho."
+                : product.stockQuantity() > 0 ? "Hiện còn " + product.stockQuantity() + " gói." : "Sản phẩm hiện hết hàng.";
+        String reply = "Dạ, bạn đang xem " + product.name() + " của TeaSmart ạ!";
+        if (intent == ChatIntentClassifier.Intent.PRODUCT_PRICE) reply += " " + price;
+        else if (intent == ChatIntentClassifier.Intent.PRODUCT_STOCK) reply += " " + stock;
+        else if (text.matches("(?s).*(lam qua|qua bieu|qua tang).*")) {
+            String description = TeaCatalogTopic.safeDescription(product.description());
+            String giftEvidence = TeaText.normalize(product.categoryName()) + " " + TeaText.normalize(description);
+            reply += giftEvidence.matches("(?s).*(lam qua|qua bieu|qua tang).*")
+                    ? " Danh mục giới thiệu sản phẩm này như một lựa chọn làm quà." + (description.isBlank() ? "" : " " + description)
+                    : " Danh mục chưa có thông tin về bao bì quà tặng. Bạn có thể hỏi cửa hàng về quy cách đóng gói trước khi chọn ạ.";
+        } else if (text.contains("cong dung")) {
+            reply += " Danh mục chưa có bằng chứng về công dụng y tế riêng của sản phẩm này.";
+        } else if (text.contains("phu hop voi ai")) {
+            reply += " Danh mục chưa có thông tin về nhóm người dùng phù hợp.";
+        } else {
+            if (product.regionName() != null && !product.regionName().isBlank()) reply += " Vùng chè trong danh mục là " + product.regionName() + ".";
+            if (product.weightGrams() != null && product.weightGrams() > 0) reply += " Quy cách " + product.weightGrams() + " g.";
+            String description = TeaCatalogTopic.safeDescription(product.description());
+            if (description.isBlank()) description = TeaCatalogTopic.safeDescription(product.tasteNote());
+            if (!description.isBlank()) reply += " Theo mô tả của cửa hàng: " + description;
+            else if (product.categoryName() != null) reply += " Thuộc danh mục " + product.categoryName() + ".";
+            else reply += " Danh mục chưa có mô tả chi tiết.";
+            reply += " " + price + " " + stock;
+        }
+        var facts = product.price() == null || product.stockQuantity() == null ? List.<BusinessProduct>of()
+                : List.of(new BusinessProduct(product.productId(),product.name(),product.slug(),product.price(),product.stockQuantity(),null,null,null));
+        return direct("CURRENT_PRODUCT",reply,facts);
+    }
+
     private Snapshot direct(String kind,String reply,List<BusinessProduct> facts) {
         return new Snapshot(new TeaAdviceResponse("RULE_BASED_CATALOG_V1",reply,TeaPreferenceRequest.empty(),List.of(),new TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of())),kind,facts);
     }
