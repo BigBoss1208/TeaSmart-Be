@@ -7,7 +7,9 @@ from time import monotonic
 
 
 class DispatchRejected(Exception):
-    pass
+    def __init__(self, code, diagnostic_code):
+        super().__init__(code)
+        self.diagnostic_code = diagnostic_code
 
 
 class DispatchLimits:
@@ -36,7 +38,7 @@ class DispatchLimits:
     def dispatch(self, conversation):
         with self.lock:
             if self.active:
-                raise DispatchRejected("RAG_BUSY")
+                raise DispatchRejected("RAG_BUSY", "RAG_CONCURRENT_LIMIT")
             now, day = self.clock(), self.utc_day()
             while self.minute and now - self.minute[0] >= 60:
                 self.minute.popleft()
@@ -49,10 +51,14 @@ class DispatchLimits:
                 key: entry for key, entry in self.conversations.items() if now - entry[1] < 86400
             }
             conversation_count = self.conversations.get(conversation, (0, now))[0]
-            if (len(self.minute) >= 5 or self.daily_count >= 30
-                    or conversation_count >= 8
-                    or self.run_limit is not None and self.run_count >= self.run_limit):
-                raise DispatchRejected("RAG_DEMO_LIMIT_REACHED")
+            for exceeded, diagnostic in (
+                (len(self.minute) >= 5, "RAG_MINUTE_LIMIT"),
+                (self.daily_count >= 30, "RAG_DAY_LIMIT"),
+                (conversation_count >= 8, "RAG_CONVERSATION_LIMIT"),
+                (self.run_limit is not None and self.run_count >= self.run_limit, "RAG_RUN_LIMIT"),
+            ):
+                if exceeded:
+                    raise DispatchRejected("RAG_DEMO_LIMIT_REACHED", diagnostic)
 
             self.minute.append(now)
             self.daily_count += 1

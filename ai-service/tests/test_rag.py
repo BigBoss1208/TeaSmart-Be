@@ -129,3 +129,34 @@ def test_brewing_quantity_requires_support_in_the_exact_quote():
             validate_output({"paragraphs":[{"text":text,"sourceId":"fixture:0","quote":passage["text"]}]},[passage])
     assert validate_output({"paragraphs":[{"text":"Dùng nước 75 độ C, hãm 1 đến 2 phút.",
         "sourceId":"fixture:0","quote":passage["text"]}]},[passage])["evidenceStatus"] == "CITED_EVIDENCE"
+
+@pytest.mark.parametrize("question,expected", [
+    ("Điểm đặc biệt của chè La Bằng là gì?", {"tn-regions"}),
+    ("Vùng chè, nét đặc trưng và văn hóa của chè La Bằng có gì đáng chú ý?", {"tn-regions", "tn-culture"}),
+    ("chè La Bằng và chè Tân Cương khác nhau thế nào?", {"tn-regions", "tan-cuong-detail"}),
+    ("chè Tân Cương có hương vị như thế nào? Ngon hay không có tùy khẩu vị không?", {"tan-cuong-detail"}),
+    ("Vì sao nên bảo quản chè trong bao bì kín?", {"tea-storage"}),
+])
+def test_focused_questions_retrieve_relevant_sources(store, question, expected):
+    assert expected <= {p["sourceId"] for p in store.search(question)}
+
+
+def test_retrieval_releases_sqlite_after_each_use(store):
+    for _ in range(5):
+        assert store.search("Cách pha chè Tân Cương như thế nào?")
+    # Windows rejects a rename if either rebuild or search left the file open.
+    store.path.rename(store.path.with_name("retrieval-released.sqlite3"))
+
+
+def test_grounding_failure_and_no_evidence_have_separate_safe_diagnostics(store, caplog):
+    class InvalidProvider(FakeProvider):
+        def generate(self, question, history, passages, *, conversation=None):
+            return {"paragraphs":[{"text":"private-output-fixture", "sourceId":"absent", "quote":"private-quote-fixture"}]}
+
+    with caplog.at_level("INFO", logger="teasmart.rag.answer"), TestClient(create_app(InvalidProvider(),store)) as client:
+        no_docs=client.post("/answer",json={"question":"zzxxqv"})
+        rejected=client.post("/answer",json={"question":"Cách pha chè Tân Cương?"})
+    assert no_docs.json()["evidenceStatus"] == "NO_RETRIEVAL"
+    assert (rejected.status_code, rejected.json()["code"]) == (502,"RAG_UNGROUNDED_OUTPUT")
+    assert "status=NO_RETRIEVAL" in caplog.text and "phase=grounding" in caplog.text
+    assert "private-output-fixture" not in caplog.text and "private-quote-fixture" not in caplog.text

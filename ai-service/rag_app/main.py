@@ -1,4 +1,4 @@
-import asyncio, os, re, threading
+import asyncio, logging, os, re, threading
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from .retrieval import VectorStore, MODEL
 from .provider import LlmProvider, RagFailure
+
+logger = logging.getLogger("teasmart.rag.answer")
+
+
 class Request(BaseModel):
     model_config=ConfigDict(extra="forbid", strict=True)
     question: str=Field(min_length=1,max_length=1000)
@@ -80,7 +84,9 @@ def create_app(provider=None,store=None):
     @app.post("/answer")
     def answer(body:Request):
         if not body.question.strip() or any(len(h)>1000 for h in body.history): raise RagFailure("RAG_INVALID_REQUEST",400)
-        if not gate.acquire(blocking=False): raise RagFailure("RAG_BUSY",503)
+        if not gate.acquire(blocking=False):
+            logger.warning("rag_answer_failure code=RAG_BUSY phase=request_gate")
+            raise RagFailure("RAG_BUSY",503)
         try:
             # Spring resolves the follow-up before calling Python. Never append raw
             # history to retrieval or send it upstream (legacy callers may still supply it).
@@ -88,8 +94,18 @@ def create_app(provider=None,store=None):
             for item in body.history:
                 private_safe(item)
             passages = store.search(question)
-            if not passages: return {"method":"RAG_NO_EVIDENCE","reply":"Mình chưa tìm thấy tài liệu phù hợp để trả lời câu này.","sources":[],"embeddingMethod":MODEL,"llmUsed":False,"evidenceStatus":"NO_RETRIEVAL"}
-            return validate_output(provider.generate(question, [], passages, conversation=body.conversation), passages)
+            if not passages:
+                logger.info("rag_answer_evidence status=NO_RETRIEVAL")
+                return {"method":"RAG_NO_EVIDENCE","reply":"Mình chưa tìm thấy tài liệu phù hợp để trả lời câu này.","sources":[],"embeddingMethod":MODEL,"llmUsed":False,"evidenceStatus":"NO_RETRIEVAL"}
+            generated = provider.generate(question, [], passages, conversation=body.conversation)
+            try:
+                result = validate_output(generated, passages)
+            except RagFailure as error:
+                # Fixed validation code only. Never log model output or the question.
+                logger.warning("rag_answer_failure code=%s phase=grounding", error.code)
+                raise
+            logger.info("rag_answer_evidence status=%s", result["evidenceStatus"])
+            return result
         finally: gate.release()
     return app
 app=create_app()

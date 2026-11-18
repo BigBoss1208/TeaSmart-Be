@@ -22,6 +22,7 @@ class RagBusinessContextTest {
   for (var pair: Map.of("Sản phẩm tôi đang mở là gì?","Chè A",
       "Chi tiết sản phẩm tôi đang mở ra xem","Tân Cương",
       "Cho tôi biết chi tiết sản phẩm này","Vị dịu, hậu ngọt",
+      "Sản phẩm này có gì đặc biệt?","Vị dịu, hậu ngọt",
       "Giá bao nhiêu?","1.150.000", "Còn hàng không?","hết hàng").entrySet()) {
    var result=service.snapshot(new RagChatRequest(pair.getKey(),null,previous,List.of("Chè La Bằng"),false,11L,List.of(91L)));
    assertEquals("CURRENT_PRODUCT",result.kind(),pair.getKey());

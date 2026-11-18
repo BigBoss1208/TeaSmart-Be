@@ -1,5 +1,6 @@
 """Versioned lexical embeddings + SQLite vector store, no model download or MySQL access."""
 import hashlib, json, math, re, sqlite3, unicodedata
+from contextlib import closing
 from pathlib import Path
 from datetime import date
 from urllib.parse import urlparse
@@ -43,7 +44,7 @@ class VectorStore:
             if not isinstance(doc.get("topics",[]),list) or any(not isinstance(x,str) or not x.strip() for x in doc.get("topics",[])): raise ValueError("Invalid source topics")
         documents=[doc for doc in documents if doc.get("verified",True)]
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("CREATE TABLE IF NOT EXISTS chunks (id TEXT PRIMARY KEY, source_id TEXT, title TEXT, url TEXT, publisher TEXT, accessed_at TEXT, text TEXT, embedding TEXT, model TEXT)")
             db.execute("CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, metadata TEXT NOT NULL)")
             db.execute("DELETE FROM chunks")
@@ -61,10 +62,8 @@ class VectorStore:
         normalized_query=normalized(query)
         if re.search(r"\b(pha|ham|nhiet do)\b",normalized_query): topic="pha che"
         elif "bao quan" in normalized_query: topic="bao quan"
-        with sqlite3.connect(self.path) as metadata_db:
-            topics={id:json.loads(meta).get("topics",[]) for id,meta in metadata_db.execute("SELECT id,metadata FROM documents")}
-
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db:
+            topics={id:json.loads(meta).get("topics",[]) for id,meta in db.execute("SELECT id,metadata FROM documents")}
             for row in db.execute("SELECT id,source_id,title,url,publisher,accessed_at,text,embedding FROM chunks WHERE model=?",(MODEL,)):
                 if topic and topic not in [normalized(t) for t in topics.get(row[1],[])]: continue
                 vector=json.loads(row[7]); score=sum(value*vector.get(key,0) for key,value in q.items())

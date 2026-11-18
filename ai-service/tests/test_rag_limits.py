@@ -29,11 +29,13 @@ def test_app_rolling_minute_and_utc_day_budgets():
         clock.now = 60 * batch
         for session in range(5):
             dispatch(limits, session)
-        with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED"):
+        with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED") as error:
             dispatch(limits, "other")
+        assert error.value.diagnostic_code == "RAG_MINUTE_LIMIT"
     clock.now += 60
-    with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED"):
+    with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED") as error:
         dispatch(limits, "other")
+    assert error.value.diagnostic_code == "RAG_DAY_LIMIT"
     clock.day += 1
     dispatch(limits, "other")
 
@@ -46,8 +48,9 @@ def test_conversation_cap_survives_utc_midnight_and_other_conversation_can_conti
         dispatch(limits, "same")
     clock.day += 1
     clock.now += 60
-    with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED"):
+    with pytest.raises(DispatchRejected, match="RAG_DEMO_LIMIT_REACHED") as error:
         dispatch(limits, "same")
+    assert error.value.diagnostic_code == "RAG_CONVERSATION_LIMIT"
     dispatch(limits, "different")
 
 
@@ -95,6 +98,7 @@ def test_timeout_is_counted_right_before_the_only_http_attempt(monkeypatch):
     with pytest.raises(RagFailure) as error:
         provider.generate("Cách bảo quản chè?", [], [], conversation="another scope")
     assert (error.value.status, error.value.code) == (429,"RAG_DEMO_LIMIT_REACHED")
+    assert error.value.diagnostic_code == "RAG_RUN_LIMIT"
     assert len(seen) == 1
     payload = json.loads(seen[0].content)
     assert payload["max_tokens"] == 900

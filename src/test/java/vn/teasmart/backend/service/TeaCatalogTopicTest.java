@@ -68,9 +68,9 @@ class TeaCatalogTopicTest {
    }
    assertEquals(List.of("Cách pha chè Tân Cương như thế nào?", "Khi pha chè Tân Cương, pha nước thứ hai thế nào?",
            "Cách bảo quản chè Tân Cương sau khi mở bao bì như thế nào?",
-           "Vì sao? Cách bảo quản chè Tân Cương sau khi mở bao bì như thế nào?"),serverCalls);
+           "Vì sao cần bảo quản chè Tân Cương đúng cách sau khi mở bao bì?"),serverCalls);
 
-   var shoppingRoute=TeaKnowledgeConversation.resolve("TeaSmart có bán loại này không?",history);
+   var shoppingRoute=TeaKnowledgeConversation.resolve("TeaSmart có bán loại này không?",history,false);
    assertNotNull(shoppingRoute);
    assertEquals(TeaKnowledgeConversation.Action.CATALOG,shoppingRoute.action());
    assertEquals("chè Tân Cương",shoppingRoute.question());
@@ -99,5 +99,95 @@ class TeaCatalogTopicTest {
   }
   var afterSwitch=chat.answer(new RagChatRequest("Vì sao vậy?",null,null,List.of("Cách pha chè Tân Cương?","chè dưới 200k"),true));
   assertEquals("CLARIFICATION",afterSwitch.businessKind());
+ }
+
+ @Test void explicitKnowledgeUsesFocusedQuestionsWithoutProductCards() {
+  var business=service();
+  var staleProductFilters=ask("Chè Tân Cương dưới 300k",null).advice().preferences();
+  var scenarios=Map.of(
+      "Chè La Bằng có gì đặc biệt?", "Điểm đặc biệt của chè La Bằng là gì?",
+      "Tôi muốn tìm hiểu về chè La Bằng", "Vùng chè, nét đặc trưng và văn hóa của chè La Bằng có gì đáng chú ý?",
+      "Chè La Bằng và chè Tân Cương khác nhau như thế nào?", "chè La Bằng và chè Tân Cương khác nhau thế nào?",
+      "Chè La Bằng và Tân Cương khác nhau thế nào?", "chè La Bằng và chè Tân Cương khác nhau thế nào?",
+      "Chè Tân Cương có ngon không?", "chè Tân Cương có hương vị như thế nào? Ngon hay không có tùy khẩu vị không?",
+      "Vì sao phải bảo quản chè kín?", "Vì sao nên bảo quản chè trong bao bì kín?");
+  scenarios.forEach((question, expected) -> {
+   for(Long productId : Arrays.asList(null, 99L)) {
+    var answer=business.snapshot(new RagChatRequest(question,null,staleProductFilters,List.of("Chè Tân Cương dưới 300k"),true,productId,List.of(2L)));
+    assertEquals("KNOWLEDGE",answer.kind(),question);
+    assertEquals(expected,answer.knowledgeQuestion());
+    assertTrue(answer.facts().isEmpty());
+    assertTrue(answer.advice().recommendations().items().isEmpty());
+   }
+  });
+ }
+
+ @Test void regionComparisonFollowupRetainsBothSubjectsAndDoesNotGuessWhatToBuy() {
+  var business=service();
+  var history=List.of("Chè La Bằng và chè Tân Cương khác nhau thế nào?");
+  var comparison=business.snapshot(new RagChatRequest("Hai loại này khác nhau thế nào?",null,null,history,true,99L));
+  assertEquals("KNOWLEDGE",comparison.kind());
+  assertEquals("chè La Bằng và chè Tân Cương khác nhau thế nào?",comparison.knowledgeQuestion());
+  var shopping=business.snapshot(new RagChatRequest("TeaSmart có bán loại này không?",null,null,history,true));
+  assertEquals("CLARIFICATION",shopping.kind());
+ }
+
+ @Test void explicitAvailabilityStillUsesCatalogEvenWithPreviousKnowledge() {
+  var business=service();
+  var history=List.of("Chè La Bằng có gì đặc biệt?");
+  for(String question:List.of("TeaSmart bán chè Tân Cương nào?", "TeaSmart có bán chè Tân Cương không?")) {
+   var offer=business.snapshot(new RagChatRequest(question,null,null,history,true));
+   assertEquals("LINE_PRODUCTS",offer.kind(),question);
+   assertEquals(Set.of(1L,2L,3L,7L),ids(offer));
+  }
+ }
+
+ @Test void failedKnowledgeTurnsStillAnchorTheNextQuestion() throws Exception {
+  var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+  var queries=new java.util.concurrent.CopyOnWriteArrayList<String>();
+  var json=tools.jackson.databind.json.JsonMapper.builder().build();
+  server.createContext("/answer",exchange -> {
+   String query=json.readTree(exchange.getRequestBody().readAllBytes()).path("question").asText();
+   queries.add(query);
+   int status;
+   String response;
+   if(query.startsWith("Cách pha")) {
+    status=503;
+    response="{\"code\":\"RAG_PROVIDER_UNAVAILABLE\"}";
+   } else if(query.startsWith("Cách bảo quản")) {
+    status=429;
+    response="{\"code\":\"RAG_DEMO_LIMIT_REACHED\"}";
+   } else {
+    status=200;
+    response="""
+      {"method":"RAG_LLM_V1","reply":"Fixture","sources":[{"id":"fixture:0","title":"Fixture","url":"https://example.invalid","publisher":"Fixture","accessedAt":"2026-11-18"}],
+       "llmUsed":true,"evidenceStatus":"CITED_EVIDENCE"}
+      """;
+   }
+   byte[] bytes=response.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+   exchange.sendResponseHeaders(status,bytes.length);
+   try(var body=exchange.getResponseBody()){body.write(bytes);}
+  });
+  server.start();
+  try {
+   var chat=new RagChatService(service(),true,"http://127.0.0.1:"+server.getAddress().getPort());
+   String brewing="Cách pha chè Tân Cương như thế nào?";
+   String second="Pha lần hai thì sao?";
+   String storage="Loại chè này bảo quản thế nào?";
+   var unavailable=assertThrows(RagChatService.Failure.class,()->chat.answer(new RagChatRequest(brewing,null,null,List.of(),true)));
+   assertEquals("RAG_PROVIDER_UNAVAILABLE",unavailable.code);
+   assertEquals("CITED_EVIDENCE",chat.answer(new RagChatRequest(second,null,null,List.of(brewing),true)).evidenceStatus());
+   var limited=assertThrows(RagChatService.Failure.class,()->chat.answer(new RagChatRequest(storage,null,null,List.of(brewing,second),true)));
+   assertEquals(429,limited.status);
+   assertEquals("RAG_DEMO_LIMIT_REACHED",limited.code);
+   var reason=chat.answer(new RagChatRequest("Vì sao cần bảo quản như vậy?",null,null,List.of(brewing,second,storage),true));
+   assertEquals("CITED_EVIDENCE",reason.evidenceStatus());
+   assertTrue(reason.businessProducts().isEmpty());
+   assertEquals(List.of(brewing,"Khi pha chè Tân Cương, pha nước thứ hai thế nào?",
+       "Cách bảo quản chè Tân Cương sau khi mở bao bì như thế nào?",
+       "Vì sao cần bảo quản chè Tân Cương đúng cách sau khi mở bao bì?"),queries);
+  } finally {
+   server.stop(0);
+  }
  }
 }

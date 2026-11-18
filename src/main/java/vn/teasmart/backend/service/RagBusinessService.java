@@ -28,7 +28,7 @@ public class RagBusinessService  {
     public Snapshot snapshot(RagChatRequest request) {
         String support = ChatSupportReplies.answer(TeaText.normalize(request.message()));
         if (support != null) return direct("CUSTOMER_SUPPORT",support,List.of());
-        var route = TeaKnowledgeConversation.resolve(request.message(), request.history());
+        var route = TeaKnowledgeConversation.resolve(request.message(), request.history(), request.productId() != null);
         if (route != null) {
             switch (route.action()) {
                 case KNOWLEDGE -> {
