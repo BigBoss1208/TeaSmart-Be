@@ -2,10 +2,11 @@ param(
     [ValidateSet('Existing','Gemini')][string]$Provider='Existing',
     [string]$Model='',
     [switch]$AllowProviderCalls,
-    [switch]$ConfirmFreeTier
+    [switch]$ConfirmFreeTier,
+    [ValidateRange(0,30)][int]$ApprovedCalls = 0
 )
 $ErrorActionPreference = 'Stop'
-$keys = @('RAG_LLM_URL', 'RAG_LLM_MODEL', 'RAG_LLM_API_KEY', 'RAG_LLM_PROVIDER', 'RAG_LLM_CALLS_ENABLED')
+$keys = @('RAG_LLM_URL', 'RAG_LLM_MODEL', 'RAG_LLM_API_KEY', 'RAG_LLM_PROVIDER', 'RAG_LLM_CALLS_ENABLED', 'RAG_LLM_RUN_LIMIT')
 $previous = @{}
 foreach ($key in $keys) { $previous[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
 try {
@@ -17,6 +18,7 @@ try {
         if ($Model -notin @('gemini-3.5-flash-lite','gemini-2.5-flash')) { throw 'Invalid Gemini model ID.' }
         $env:RAG_LLM_MODEL=$Model
     }
+    if ($ApprovedCalls -gt 0) { $env:RAG_LLM_RUN_LIMIT = [string]$ApprovedCalls }
     $env:RAG_LLM_CALLS_ENABLED=if($AllowProviderCalls){'true'}else{'false'}
     if (!$AllowProviderCalls) { Write-Host 'Provider calls BLOCKED. Loading a key does not enable inference.' }
     if ([string]::IsNullOrWhiteSpace($env:RAG_LLM_URL)) { $env:RAG_LLM_URL = Read-Host 'Full HTTPS chat/completions endpoint (or localhost HTTP)' }
@@ -35,7 +37,7 @@ try {
     }
     if (!(Test-Path -LiteralPath $python)) { throw 'Existing AI venv unavailable. No package installed.' }
     Write-Host 'Starting local RAG service on 127.0.0.1:8002. No key is written to source/history/log.'
-    & $python -m uvicorn rag_app.main:app --app-dir $PSScriptRoot --host 127.0.0.1 --port 8002 --no-access-log --log-level warning
+    & $python -m uvicorn rag_app.main:app --app-dir $PSScriptRoot --host 127.0.0.1 --port 8002 --workers 1 --no-access-log --log-level warning
 } finally {
     foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $previous[$key], 'Process') }
 }

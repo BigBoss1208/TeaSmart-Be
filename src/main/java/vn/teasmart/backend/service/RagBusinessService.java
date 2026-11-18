@@ -18,18 +18,42 @@ public class RagBusinessService  {
         this.reporting=reporting;
         this.products=products;
     }
-    public record Snapshot(TeaAdviceResponse advice,String kind,List<BusinessProduct> facts) {
+    public record Snapshot(TeaAdviceResponse advice,String kind,List<BusinessProduct> facts,String knowledgeQuestion) {
+        public Snapshot(TeaAdviceResponse advice,String kind,List<BusinessProduct> facts) {
+            this(advice,kind,facts,null);
+        }
     }
+
     @Transactional(readOnly=true)
     public Snapshot snapshot(RagChatRequest request) {
+        String support = ChatSupportReplies.answer(TeaText.normalize(request.message()));
+        if (support != null) return direct("CUSTOMER_SUPPORT",support,List.of());
+        var route = TeaKnowledgeConversation.resolve(request.message(), request.history());
+        if (route != null) {
+            switch (route.action()) {
+                case KNOWLEDGE -> {
+                    var answer = direct("KNOWLEDGE","",List.of());
+                    return new Snapshot(answer.advice(),answer.kind(),answer.facts(),route.question());
+                }
+                case CLARIFY -> {
+                    return direct("CLARIFICATION","Bạn đang hỏi về loại chè nào hoặc muốn mình giải thích thêm phần nào ạ?",List.of());
+                }
+                case CATALOG -> {
+                    // This is a new catalog topic; discard old product/budget shortcuts.
+                    return catalogSnapshot(new RagChatRequest(route.question(),null,null,List.of()));
+                }
+            }
+        }
+        return catalogSnapshot(request);
+    }
+
+    private Snapshot catalogSnapshot(RagChatRequest request) {
         var intent=ChatIntentClassifier.classify(request.message(),request.productId()!=null);
         String text=TeaText.normalize(request.message());
         boolean followUp=ChatConversation.isFollowUp(text)&&!ChatConversation.startsNewNeed(text);
         var previous=followUp?request.context():null;
         if(followUp && intent==ChatIntentClassifier.Intent.OUT_OF_SCOPE)intent=ChatIntentClassifier.Intent.PRODUCT_SEARCH;
         if(intent==ChatIntentClassifier.Intent.GREETING)return direct("GREETING","Chào bạn! 🍃 Mình là TeaSmart AI. Hôm nay bạn muốn tìm chè theo khẩu vị, ngân sách hay cần mình hỗ trợ đặt hàng ạ?",List.of());
-        String support=ChatSupportReplies.answer(text);
-        if(support!=null)return direct("CUSTOMER_SUPPORT",support,List.of());
         if ((ChatIntentClassifier.referencesCurrentProduct(text) ||
                 request.productId()!=null && ChatIntentClassifier.isCurrentProductFollowUp(text))
                 && !TeaCatalogTopic.knowledge(text)

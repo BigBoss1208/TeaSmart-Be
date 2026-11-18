@@ -10,8 +10,8 @@ SOURCES=Path(__file__).resolve().parents[1]/"rag_app/knowledge/sources.json"
 class FakeProvider:
     configured=True
     def __init__(self): self.seen=None
-    def generate(self,question,history,passages):
-        self.seen=(question,history,passages)
+    def generate(self,question,history,passages,*,conversation=None):
+        self.seen=(question,history,passages,conversation)
         p=passages[0]
         return {"paragraphs":[{"text":"Tham khảo tài liệu đã truy xuất.","sourceId":p["id"],"quote":p["text"][:50]}]}
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_service_roundtrip_with_explicit_fake_provider(store):
         r=client.post("/answer",json={"question":"Pha trà thế nào?","history":["Tôi thích trà nhẹ"]})
         assert r.status_code==200 and r.json()["llmUsed"] is True
         assert r.json()["sources"] and r.json()["embeddingMethod"]==MODEL
-        assert "Tôi thích trà nhẹ" in provider.seen[1]
+        assert provider.seen[1] == []
 def test_missing_configuration_is_503_not_fake_success(store,monkeypatch):
     for key in ["RAG_LLM_URL","RAG_LLM_MODEL","RAG_LLM_API_KEY"]:monkeypatch.delenv(key,raising=False)
     with TestClient(create_app(LlmProvider(),store)) as client:
@@ -92,3 +92,40 @@ def test_supported_partial_answer_cites_only_its_actual_source(store):
 def test_unrelated_passage_cannot_be_cited_with_a_brewing_quote(store):
     p=store.search("Tân Cương La Bằng Trại Cài")[0]
     with pytest.raises(RagFailure):validate_output({"paragraphs":[{"text":"Pha chè ở 80 độ.","sourceId":p["id"],"quote":"làm nóng trà cụ và tráng ấm"}]},[p])
+
+def test_follow_up_queries_do_not_let_old_brewing_history_override_storage(store):
+    provider = FakeProvider()
+    scope = "a" * 32
+    with TestClient(create_app(provider,store)) as client:
+        first = client.post("/answer",json={"question":"Khi pha chè Tân Cương, pha nước thứ hai thế nào?","conversation":scope})
+        assert first.status_code == 200
+        assert "tn-brewing-practice" in {p["sourceId"] for p in provider.seen[2]}
+        assert provider.seen[3] == scope
+        second = client.post("/answer",json={"question":"Cách bảo quản chè Tân Cương?","history":["Cách pha chè Tân Cương?","Đơn hàng #1234"]})
+        assert second.status_code == 200
+        assert second.json()["evidenceStatus"] == "CITED_EVIDENCE"
+        assert all(p["sourceId"] == "tea-storage" for p in provider.seen[2])
+        assert provider.seen[1] == []
+
+
+def test_missing_evidence_does_not_dispatch(store):
+    provider = FakeProvider()
+    with TestClient(create_app(provider,store)) as client:
+        response = client.post("/answer",json={"question":"zxqvwxjkk"})
+    assert response.json()["evidenceStatus"] == "NO_RETRIEVAL"
+    assert provider.seen is None
+
+
+def test_whitespace_only_paragraph_is_not_grounded_evidence(store):
+    passages=store.search("Cách pha chè Tân Cương")
+    with pytest.raises(RagFailure,match="RAG_UNGROUNDED_OUTPUT"):
+        validate_output({"paragraphs":[{"text":"  ","sourceId":passages[0]["id"],"quote":passages[0]["text"][:30]}]},passages)
+
+def test_brewing_quantity_requires_support_in_the_exact_quote():
+    passage = {"id":"fixture:0","title":"Ví dụ pha trà","url":"https://example.invalid",
+               "publisher":"Fixture","accessedAt":"2026-11-18","text":"Dùng nước 75 °C, hãm 1–2 phút."}
+    for text in ["Dùng nước 85 °C.", "Hãm 3 phút.", "Hãm 1–3 phút."]:
+        with pytest.raises(RagFailure,match="RAG_UNGROUNDED_OUTPUT"):
+            validate_output({"paragraphs":[{"text":text,"sourceId":"fixture:0","quote":passage["text"]}]},[passage])
+    assert validate_output({"paragraphs":[{"text":"Dùng nước 75 độ C, hãm 1 đến 2 phút.",
+        "sourceId":"fixture:0","quote":passage["text"]}]},[passage])["evidenceStatus"] == "CITED_EVIDENCE"

@@ -35,4 +35,69 @@ class TeaCatalogTopicTest {
   assertFalse(result.facts().isEmpty());
   assertEquals("KNOWLEDGE",service().snapshot(new RagChatRequest("Cách pha chè Tân Cương?",null,null,List.of(),false,99L)).kind());
  }
+
+ @Test void knowledgeFollowupsAndCatalogSwitchKeepOnlyRelevantContext() {
+  var business=service();
+  var history=new ArrayList<String>();
+  var session="67e93452-8bbc-4541-9895-e0556b642fb2";
+  TeaPreferenceRequest oldCatalog=ask("Chè La Bằng",null).advice().preferences();
+  var serverCalls=new java.util.concurrent.CopyOnWriteArrayList<String>();
+  com.sun.net.httpserver.HttpServer server;
+  try {
+   server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+  } catch (java.io.IOException e) { throw new AssertionError(e); }
+  server.createContext("/answer", exchange -> {
+   String body=new String(exchange.getRequestBody().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+   serverCalls.add(tools.jackson.databind.json.JsonMapper.builder().build().readTree(body).path("question").asText());
+   byte[] bytes="""
+     {"method":"RAG_LLM_V1","reply":"Fixture", "sources":[{"id":"fixture:0","title":"Nguồn kiểm thử","url":"https://example.invalid","publisher":"Fixture","accessedAt":"2026-11-18"}],
+      "llmUsed":true,"evidenceStatus":"CITED_EVIDENCE"}
+     """.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+   exchange.sendResponseHeaders(200,bytes.length);
+   try(var response=exchange.getResponseBody()){response.write(bytes);}
+  });
+  server.start();
+  try {
+   var chat=new RagChatService(business,true,"http://127.0.0.1:"+server.getAddress().getPort());
+   for(String question:List.of("Cách pha chè Tân Cương như thế nào?", "Pha lần hai thì sao?",
+           "Loại chè này bảo quản thế nào?", "Vì sao vậy?")) {
+    var response=chat.answer(new RagChatRequest(question,null,oldCatalog,List.copyOf(history),true,123L,List.of(4L),session),"fixture");
+    assertEquals("CITED_EVIDENCE",response.evidenceStatus(),question);
+    assertTrue(response.businessProducts().isEmpty());
+    history.add(question);
+   }
+   assertEquals(List.of("Cách pha chè Tân Cương như thế nào?", "Khi pha chè Tân Cương, pha nước thứ hai thế nào?",
+           "Cách bảo quản chè Tân Cương sau khi mở bao bì như thế nào?",
+           "Vì sao? Cách bảo quản chè Tân Cương sau khi mở bao bì như thế nào?"),serverCalls);
+
+   var shoppingRoute=TeaKnowledgeConversation.resolve("TeaSmart có bán loại này không?",history);
+   assertNotNull(shoppingRoute);
+   assertEquals(TeaKnowledgeConversation.Action.CATALOG,shoppingRoute.action());
+   assertEquals("chè Tân Cương",shoppingRoute.question());
+   var offer=chat.answer(new RagChatRequest("TeaSmart có bán loại này không?",null,oldCatalog,history,true,123L,List.of(4L),session),"fixture");
+   assertEquals("LINE_PRODUCTS",offer.businessKind());
+   assertEquals(21L,offer.preferences().regionId());
+   assertTrue(offer.businessProducts().stream().noneMatch(p->p.productId()==4L));
+   var budget=chat.answer(new RagChatRequest("Loại nào dưới 300k?",null,offer.preferences(),history,true),"fixture");
+   assertEquals(Set.of(2L,3L,7L),new HashSet<>(budget.businessProducts().stream().map(RagChatResponse.BusinessProduct::productId).toList()));
+   assertEquals(4,serverCalls.size(),"Shopping does not dispatch RAG");
+
+   var switchBack=chat.answer(new RagChatRequest("Cách pha chè La Bằng?",null,budget.preferences(),history,true),"fixture");
+   assertEquals("CITED_EVIDENCE",switchBack.evidenceStatus());
+   assertEquals("Cách pha chè La Bằng như thế nào?",serverCalls.get(4));
+  } finally {
+   server.stop(0);
+  }
+ }
+
+ @Test void ambiguousFollowupsAskForClarificationWithoutCallingPython() {
+  var chat=new RagChatService(service(),true,"http://127.0.0.1:1");
+  for(String question:List.of("Pha lần hai thì sao?","Thế còn lần hai?","Vì sao vậy?","Loại chè này bảo quản thế nào?","TeaSmart có bán loại này không?")) {
+   var result=chat.answer(new RagChatRequest(question,null,null,List.of(),true));
+   assertEquals("CLARIFICATION",result.businessKind(),question);
+   assertFalse(result.llmUsed());
+  }
+  var afterSwitch=chat.answer(new RagChatRequest("Vì sao vậy?",null,null,List.of("Cách pha chè Tân Cương?","chè dưới 200k"),true));
+  assertEquals("CLARIFICATION",afterSwitch.businessKind());
+ }
 }

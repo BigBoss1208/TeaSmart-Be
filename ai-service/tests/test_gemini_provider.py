@@ -158,7 +158,7 @@ def test_internal_diagnostics_are_not_serialized_in_public_response(gemini):
         def search(self,query):return [{"id":"local:0","title":"Brewing","text":"Warm the teapot."}]
     class Provider:
         configured=True
-        def generate(self,*args):raise RagFailure("RAG_PROVIDER_UNAVAILABLE",503,diagnostic_code="RAG_UPSTREAM_HTTP_503",upstream_status=503)
+        def generate(self,*args,**kwargs):raise RagFailure("RAG_PROVIDER_UNAVAILABLE",503,diagnostic_code="RAG_UPSTREAM_HTTP_503",upstream_status=503)
     with TestClient(create_app(Provider(),Store())) as client:
         response=client.post("/answer",json={"question":"tea"})
     assert response.status_code==503 and response.json()=={"code":"RAG_PROVIDER_UNAVAILABLE"}

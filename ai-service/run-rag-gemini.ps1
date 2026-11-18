@@ -1,8 +1,9 @@
 param(
     [ValidateSet('gemini-3.5-flash-lite','gemini-2.5-flash')][string]$Model='gemini-3.5-flash-lite',
     [switch]$AllowProviderCalls,
-    [switch]$ConfirmFreeTier
+    [switch]$ConfirmFreeTier,
+    [ValidateRange(0,30)][int]$ApprovedCalls = 0
 )
 $ErrorActionPreference='Stop'
 # Key is read as SecureString by the existing launcher, never a command-line parameter.
-& (Join-Path $PSScriptRoot 'run-rag-local.ps1') -Provider Gemini -Model $Model -AllowProviderCalls:$AllowProviderCalls -ConfirmFreeTier:$ConfirmFreeTier
+& (Join-Path $PSScriptRoot 'run-rag-local.ps1') -Provider Gemini -Model $Model -AllowProviderCalls:$AllowProviderCalls -ConfirmFreeTier:$ConfirmFreeTier -ApprovedCalls $ApprovedCalls

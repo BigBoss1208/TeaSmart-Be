@@ -39,6 +39,9 @@ public class RagChatService  {
         endpoint=base.resolve("/answer");
     }
     public RagChatResponse answer(RagChatRequest request) {
+        return answer(request,null);
+    }
+    public RagChatResponse answer(RagChatRequest request,String customer) {
         List<String> history=request.history()==null?List.of():request.history();
         for(String text:java.util.stream.Stream.concat(java.util.stream.Stream.of(request.message()),history.stream()).toList())if(text.matches("(?is).*\\bBearer\\s+\\S+.*")||text.matches("(?s).*eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+.*"))throw new Failure("RAG_PRIVATE_INPUT",400);
         var snapshot=business.snapshot(request);
@@ -56,8 +59,16 @@ public class RagChatService  {
         }
         if(!enabled || Boolean.FALSE.equals(request.allowLlm()))return new RagChatResponse("KNOWLEDGE_UNAVAILABLE","Mình chưa có đủ tài liệu đã xác minh để trả lời câu hỏi kiến thức này lúc này. Bạn vẫn có thể hỏi mình về sản phẩm, giá, tồn kho hoặc cách mua hàng trên TeaSmart.",advice.preferences(),List.of(),new vn.teasmart.backend.dto.response.TeaRecommendationResponse("CONTENT_BASED_V1",false,List.of()),List.of(),null,false,"KNOWLEDGE",List.of());
         if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("LLM call cannot hold database transaction.");
-        var knowledgeHistory=history.stream().filter(text -> Set.of(ChatIntentClassifier.Intent.TEA_KNOWLEDGE,ChatIntentClassifier.Intent.TEA_ORIGIN,ChatIntentClassifier.Intent.BREWING_GUIDE).contains(ChatIntentClassifier.classify(text,false))).toList();
-        var body=Map.of("question",request.message(),"history",knowledgeHistory);
+        // Forward only a public tea question. Keep raw chat, account data,
+        // catalog fields and the authentication token outside the provider contract.
+        String question=snapshot.knowledgeQuestion()==null
+                ? TeaKnowledgeConversation.standalone(request.message()) : snapshot.knowledgeQuestion();
+        var body=new HashMap<String,Object>();
+        body.put("question",question);
+        if(customer!=null) {
+            String scope=customer+"\n"+Objects.toString(request.conversationId(),"legacy").toLowerCase(Locale.ROOT);
+            body.put("conversation",UUID.nameUUIDFromBytes(scope.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString().replace("-",""));
+        }
         CompletableFuture<HttpResponse<byte[]>> pending=null;
         try {
             pending=http.sendAsync(HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(35)).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(body))).build(),info->new LimitedBody());
@@ -67,26 +78,39 @@ public class RagChatService  {
                 String code="RAG_UNAVAILABLE";
                 try {
                     String c=json.readTree(bytes).path("code").asText();
-                    if(Set.of("RAG_NOT_CONFIGURED","RAG_PROVIDER_UNAVAILABLE","RAG_TIMEOUT","RAG_INVALID_OUTPUT","RAG_UNGROUNDED_OUTPUT","RAG_BUSINESS_CLAIM_REJECTED","RAG_BUSY","RAG_CALLS_DISABLED","RAG_RATE_LIMITED","RAG_PROVIDER_AUTH_REJECTED","RAG_MODEL_UNAVAILABLE","RAG_MODEL_RETIRED","RAG_PROVIDER_CONFIG_INVALID").contains(c))code=c;
+                    if(Set.of("RAG_NOT_CONFIGURED","RAG_PROVIDER_UNAVAILABLE","RAG_TIMEOUT","RAG_INVALID_OUTPUT","RAG_UNGROUNDED_OUTPUT","RAG_BUSINESS_CLAIM_REJECTED","RAG_BUSY","RAG_CALLS_DISABLED","RAG_DEMO_LIMIT_REACHED","RAG_RATE_LIMITED","RAG_PROVIDER_AUTH_REJECTED","RAG_MODEL_UNAVAILABLE","RAG_MODEL_RETIRED","RAG_PROVIDER_CONFIG_INVALID").contains(c))code=c;
                 }
                 catch(RuntimeException ignored) {
                 }
-                throw new Failure(code,response.statusCode()==504?504:503);
+                int status=switch(response.statusCode()) {
+                    case 429,502,504 -> response.statusCode();
+                    default -> 503;
+                };
+                throw new Failure(code,status);
             }
-            JsonNode node=json.readTree(bytes);
+            JsonNode node;
+            try { node=json.readTree(bytes); }
+            catch(RuntimeException invalidJson) { throw new Failure("RAG_INVALID_OUTPUT",502); }
+            if(node==null || !node.isObject())throw new Failure("RAG_INVALID_OUTPUT",502);
             String reply=node.path("reply").asText(),method=node.path("method").asText();
             if(reply.isBlank()||reply.length()>4000||!Set.of("RAG_LLM_V1","RAG_NO_EVIDENCE").contains(method)||!node.path("sources").isArray())throw new Failure("RAG_INVALID_OUTPUT",502);
             var sources=new ArrayList<Source>();
             for(var source:node.get("sources")) {
                 String url=source.path("url").asText();
-                URI uri=URI.create(url);
+                URI uri;
+                try { uri=URI.create(url); }
+                catch(IllegalArgumentException invalidUrl) { throw new Failure("RAG_INVALID_OUTPUT",502); }
                 if(!"https".equals(uri.getScheme())||uri.getHost()==null||uri.getUserInfo()!=null)throw new Failure("RAG_INVALID_OUTPUT",502);
                 for(String field:List.of("id","title","publisher","accessedAt"))if(source.path(field).asText().isBlank())throw new Failure("RAG_INVALID_OUTPUT",502);
                 sources.add(new Source(source.path("id").asText(),source.path("title").asText(),url,source.path("publisher").asText(),source.path("accessedAt").asText()));
                 if(sources.size()>4)throw new Failure("RAG_INVALID_OUTPUT",502);
             }
             if((method.equals("RAG_LLM_V1")&&(sources.isEmpty()||!node.path("llmUsed").asBoolean()))||(method.equals("RAG_NO_EVIDENCE")&&!sources.isEmpty()))throw new Failure("RAG_INVALID_OUTPUT",502);
-            return new RagChatResponse(method,reply,advice.preferences(),advice.notices(),advice.recommendations(),List.copyOf(sources),node.path("embeddingMethod").asText(),node.path("llmUsed").asBoolean(),"KNOWLEDGE",List.of());
+            boolean used=node.path("llmUsed").asBoolean();
+            String expectedEvidence=method.equals("RAG_LLM_V1") ? "CITED_EVIDENCE" : used ? "MODEL_ABSTAINED" : "NO_RETRIEVAL";
+            if(node.has("evidenceStatus") && !expectedEvidence.equals(node.path("evidenceStatus").asText()))
+                throw new Failure("RAG_INVALID_OUTPUT",502);
+            return new RagChatResponse(method,reply,advice.preferences(),advice.notices(),advice.recommendations(),List.copyOf(sources),node.path("embeddingMethod").asText(),used,"KNOWLEDGE",List.of(),expectedEvidence);
         }
         catch(Failure e) {
             throw e;
