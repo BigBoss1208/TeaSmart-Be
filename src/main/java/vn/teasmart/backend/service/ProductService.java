@@ -53,6 +53,8 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found.")));
     }
 
+    // A hidden or missing product is a normal lookup outcome for conversational callers.
+    @Transactional(readOnly = true, noRollbackFor = ResourceNotFoundException.class)
     public ProductResponse getPublicProductById(Long productId) {
         if (sellerFoundationEnabled) return findPublicProductWithSellers("p.product_id", productId);
         return toPublicProduct(productRepository.findById(productId)

@@ -64,6 +64,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me/**").hasAnyRole("CUSTOMER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/auth/google/link/callback").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/google/link", "/api/auth/google/link/start", "/api/auth/google/link/complete").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.POST, "/api/leaf-classifications/predict").authenticated()
                 .requestMatchers("/api/chatbot/**", "/api/recommendations/preferences").hasRole("CUSTOMER")
                  .requestMatchers("/api/wishlist", "/api/wishlist/**").hasRole("CUSTOMER")
                 .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")

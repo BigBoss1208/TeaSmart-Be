@@ -44,3 +44,21 @@ __pycache__/
 config/*.env
 *.dump
 *.backup
+
+# Local model resources and private backups
+.envrc
+*.local.env
+*.pfx
+*.p12
+*.pem
+*.key
+*.sql.gz
+*.bak
+*.pth
+*.pt
+*.onnx
+*.safetensors
+leaf-model/
+/datasets/
+/backups/
+/artifacts/

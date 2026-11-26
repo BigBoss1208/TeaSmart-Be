@@ -1,0 +1,26 @@
+{
+  "model_id": "mobilenetv2-epoch20",
+  "architecture": "torchvision.models.mobilenet_v2",
+  "epoch": 20,
+  "classes": 7,
+  "storage": "Bộ tài nguyên bàn giao riêng của TeaSmart (runtime/leaf-epoch20.zip trong bản sao lưu phát hành).",
+  "configure": "Giải nén ba tệp vào cùng thư mục ngoài Git và đặt LEAF_MODEL_DIR trỏ tới thư mục đó.",
+  "preprocessing": "RGB, resize toàn khung 224x224 bằng bilinear có antialias, chuẩn hóa ImageNet.",
+  "artifacts": [
+    {
+      "path": "best_mobilenetv2.pth",
+      "bytes": 21501765,
+      "sha256": "6c3ed706fee56e481d8820c1b74a207ab98b53c4615b5b55a8b381f593d5d10e"
+    },
+    {
+      "path": "class_to_idx.json",
+      "bytes": 176,
+      "sha256": "4f61d50042183789407f3b7a834a7009bcbf2d4aff64c49258226db19e1e0149"
+    },
+    {
+      "path": "config.json",
+      "bytes": 1455,
+      "sha256": "28b1c7cff0f2303f8191192a3822b8d4478991e06c24006daf06f55645c38004"
+    }
+  ]
+}

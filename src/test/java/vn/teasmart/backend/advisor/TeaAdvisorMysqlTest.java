@@ -154,9 +154,16 @@ class TeaAdvisorMysqlTest {
         }
         for(String question:List.of("Bây giờ là mấy giờ?","Thời tiết hôm nay thế nào?","Hôm nay có mưa không?")){var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question));assertEquals(200,r.status);assertEquals("OUT_OF_SCOPE",r.data.get("businessKind").asText());assertFalse(r.data.get("llmUsed").asBoolean());}
         for(int id:List.of(1,2,5))for(String question:List.of("Sản phẩm này là chè gì?","Công dụng của sản phẩm?","Giá bao nhiêu?","Còn hàng không?","Sản phẩm phù hợp với ai?","Có phù hợp làm quà không?")){
-            var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question,"productId",id));assertEquals(200,r.status);assertEquals("PRODUCT_DETAIL",r.data.get("businessKind").asText());var item=r.data.get("businessProducts").get(0);assertEquals(id,item.get("productId").asInt());assertEquals(id==5?0:10,item.get("stockQuantity").asInt());assertEquals(150000,item.get("price").asInt());
+            var r=call("POST","/api/chatbot/rag",customer,Map.of("message",question,"productId",id));assertEquals(200,r.status);assertEquals("CURRENT_PRODUCT", r.data.get("businessKind").asText(), question);
+            assertFalse(r.data.get("llmUsed").asBoolean());
+            assertEquals(1, r.data.get("businessProducts").size());
+            var item=r.data.get("businessProducts").get(0);assertEquals(id,item.get("productId").asInt());assertEquals(id==5?0:10,item.get("stockQuantity").asInt());assertEquals(150000,item.get("price").asInt());
         }
-        assertEquals(404,call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?","productId",4)).status);
+        var hidden = call("POST", "/api/chatbot/rag", customer, Map.of("message", "Giá bao nhiêu?", "productId", 4));
+        assertEquals(200, hidden.status);
+        assertEquals("CLARIFICATION", hidden.data.get("businessKind").asText());
+        assertEquals(0, hidden.data.get("businessProducts").size());
+        assertFalse(hidden.data.get("llmUsed").asBoolean());
         assertEquals(400,call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?","productId",-1)).status);
         var r=call("POST","/api/chatbot/rag",customer,Map.of("message","Giá bao nhiêu?"));assertEquals("CLARIFICATION",r.data.get("businessKind").asText());
         for(String t:TABLES)assertEquals(before.get(t),jdbc.queryForList("SELECT * FROM `"+t+"`"));
