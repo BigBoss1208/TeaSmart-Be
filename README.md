@@ -6,6 +6,8 @@ Backend TeaSmart cung cấp REST API cho website thương mại điện tử ch�
 
 [Repository TeaSmart-FE](https://github.com/BigBoss1208/TeaSmart-FE)
 
+[Kho nghiên cứu MobileNetV2 · mã huấn luyện, hồ sơ làm sạch và kết quả Test](https://github.com/BigBoss1208/TeaSmart-AI-Leaf)
+
 ## Mục lục
 
 - [Chức năng và kiến trúc](#chức-năng-và-kiến-trúc)
