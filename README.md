@@ -1,6 +1,6 @@
 # <img src="docs/brand/leaf.svg" width="32" alt=""> TeaSmart Backend
 
-![Spring Boot 4.1.1](https://img.shields.io/badge/Spring%20Boot-4.1.1-176548) ![Python 3.12.10](https://img.shields.io/badge/Python-3.12.10-176548) ![PyTorch 2.6.0](https://img.shields.io/badge/PyTorch-2.6.0-176548)
+![Spring Boot 4.1.1 · Python 3.12.10 · PyTorch 2.6.0](docs/brand/technologies.svg)
 
 Backend TeaSmart cung cấp REST API cho website thương mại điện tử chè Thái Nguyên. Spring Boot xử lý xác thực, phân quyền, catalog, khách hàng, người bán, đặt hàng và thanh toán. Các dịch vụ Python xử lý phân tích cảm xúc, truy xuất kiến thức và suy luận ảnh/video lá chè.
 
